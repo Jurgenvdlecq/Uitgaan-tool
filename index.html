@@ -1,0 +1,1543 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F6F1E8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vanavond">
+<title>Vanavond</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Opzet: kaart eerst, met een vast blad onderin en een tabbalk; sfeerkaart en invullen schuiven er als lagen overheen. */
+:root {
+  --grond: #F6F1E8;
+  --vlak: #FFFBF4;
+  --vlak2: #F1EADD;
+  --lijn: #EBE2D3;
+  --lijn2: #E0D4C1;
+  --inkt: #1C1612;
+  --inkt2: #5C4F42;
+  --stil: #7A6A58;
+  --accent: #B4531E;
+  --glas: rgba(255, 251, 244, 0.94);
+  --schaduw: 0 8px 24px rgba(60, 40, 20, 0.14);
+  --knop: #1C1612;
+  --op-knop: #FBF6EC;
+  --rustig: #1F7A5F;  --op-rustig: #FFF8EE;  --t-rustig: #1A6B53;
+  --gezellig: #F2B544; --op-gezellig: #1C1612; --t-gezellig: #8A5A08;
+  --druk: #D9641F;    --op-druk: #FFF8EE;    --t-druk: #A84A14;
+  --vol: #A8322C;     --op-vol: #FFF8EE;     --t-vol: #A8322C;
+  --tip: #FBEBC8;     --op-tip: #5C3F0A;
+  --demo: #2B4C7E;    --op-demo: #F4F7FC;
+  --f-kop: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --f-tekst: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --tab: calc(62px + env(safe-area-inset-bottom, 0px));
+  --blad: 204px;
+  color-scheme: light;
+}
+:root.nacht {
+  --grond: #14131B;
+  --vlak: #1C1B24;
+  --vlak2: #262430;
+  --lijn: rgba(255, 255, 255, 0.08);
+  --lijn2: rgba(255, 255, 255, 0.15);
+  --inkt: #F4F1EA;
+  --inkt2: #D9D4E2;
+  --stil: #ABA4B8;
+  --accent: #F2B544;
+  --glas: rgba(28, 27, 36, 0.94);
+  --schaduw: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --knop: #F2B544;
+  --op-knop: #14131B;
+  --rustig: #5BC8AF;  --op-rustig: #0E211C;  --t-rustig: #6FD6BD;
+  --gezellig: #F2B544; --op-gezellig: #14131B; --t-gezellig: #F2B544;
+  --druk: #EE7F3A;    --op-druk: #1A0E05;    --t-druk: #F39A63;
+  --vol: #EF5B5F;     --op-vol: #1A0607;     --t-vol: #F4878A;
+  --tip: #3A2E14;     --op-tip: #F7DFA6;
+  --demo: #9DB9EA;    --op-demo: #0F1726;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--grond);
+  color: var(--inkt);
+  font-family: var(--f-tekst);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+.serif { font-family: var(--f-kop); font-weight: 400; letter-spacing: -0.01em; }
+
+/* ---------- Schermen ---------- */
+.scherm { position: fixed; top: 0; left: 0; right: 0; bottom: var(--tab); overflow: hidden; display: flex; flex-direction: column; background: var(--grond); }
+.scherm-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 18px); padding-bottom: 28px;
+  padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
+.schermkop { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+.schermkop h1 { font-family: var(--f-kop); font-weight: 400; font-size: 36px; line-height: 1.02; letter-spacing: -0.02em; }
+.schermkop p { margin: 0; color: var(--inkt2); font-size: 14px; max-width: 34em; }
+.oogje { font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+
+/* ---------- Kaart ---------- */
+#kaart { position: absolute; inset: 0; background: var(--vlak2); }
+.leaflet-container { font-family: var(--f-tekst); background: var(--vlak2); }
+:root:not(.nacht) .leaflet-tile-pane { filter: sepia(0.2) saturate(0.88) brightness(1.02); }
+.leaflet-bottom { bottom: calc(var(--blad) + 6px); }
+.leaflet-control-attribution { background: var(--glas) !important; color: var(--stil) !important; font-size: 10px; border-radius: 8px 0 0 8px; padding: 1px 6px !important; }
+.leaflet-control-attribution a { color: var(--inkt2) !important; }
+.kaart-fout { position: absolute; inset: 0; display: grid; place-items: center; padding: 120px 32px 260px; text-align: center; color: var(--inkt2); }
+
+.kop { position: absolute; top: 0; left: 0; right: 0; z-index: 500; pointer-events: none;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 10px; }
+.kop > * { pointer-events: auto; }
+.zoekrij { display: flex; gap: 10px; align-items: center; }
+.zoekveld { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 14px 0 16px;
+  border-radius: 16px; background: var(--glas); border: 1px solid var(--lijn2); box-shadow: var(--schaduw);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); color: var(--stil); text-align: left; font-size: 14px; font-weight: 600; }
+.zoekveld .z-tekst { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.woordmerk { font-family: var(--f-kop); font-size: 21px; color: var(--accent); font-weight: 400; letter-spacing: -0.01em; }
+.rondknop { flex-shrink: 0; width: 50px; height: 50px; border-radius: 16px; display: grid; place-items: center;
+  background: var(--glas); border: 1px solid var(--lijn2); box-shadow: var(--schaduw); color: var(--inkt);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.rondknop.klein { width: 44px; height: 44px; border-radius: 14px; }
+
+.chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 2px 14px 6px; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex-shrink: 0; height: 38px; padding: 0 15px; border-radius: 999px; border: 1px solid var(--lijn2);
+  background: var(--glas); color: var(--inkt); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--knop); color: var(--op-knop); border-color: var(--knop); font-weight: 700; }
+.kop .chip { box-shadow: 0 4px 12px rgba(40, 25, 10, 0.08); }
+
+.kaartknoppen { position: absolute; z-index: 500; right: max(14px, env(safe-area-inset-right, 0px));
+  top: calc(env(safe-area-inset-top, 0px) + 124px); display: flex; flex-direction: column; gap: 8px; }
+
+.kaartvoet { position: absolute; z-index: 500; left: max(14px, env(safe-area-inset-left, 0px)); right: max(14px, env(safe-area-inset-right, 0px));
+  bottom: calc(var(--blad) + 10px); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.kaartvoet > * { pointer-events: auto; }
+.legenda { align-self: flex-start; display: flex; gap: 10px; padding: 6px 10px; border-radius: 10px; background: var(--glas);
+  border: 1px solid var(--lijn2); font-size: 11px; font-weight: 600; color: var(--inkt2); }
+.legenda span { display: inline-flex; align-items: center; gap: 5px; }
+.legenda i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+.demobalk { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 14px; border-radius: 16px;
+  background: var(--demo); color: var(--op-demo); box-shadow: var(--schaduw); }
+.demobalk .d-tekst { display: flex; flex-direction: column; line-height: 1.15; flex-shrink: 0; }
+.demobalk .d-tijd { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.demobalk .d-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85; }
+.demobalk input[type=range] { flex: 1; min-width: 0; accent-color: var(--op-demo); height: 32px; }
+.demobalk button { flex-shrink: 0; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid currentColor; background: transparent; color: inherit; font-size: 12.5px; font-weight: 700; }
+
+.sleepbalk { position: absolute; z-index: 600; left: max(14px, env(safe-area-inset-left, 0px)); right: max(14px, env(safe-area-inset-right, 0px));
+  top: calc(env(safe-area-inset-top, 0px) + 12px); display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 16px;
+  border-radius: 16px; background: var(--knop); color: var(--op-knop); box-shadow: var(--schaduw); font-weight: 600; font-size: 14px; }
+.sleepbalk span { flex: 1; }
+.sleepbalk button { height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--op-knop); color: var(--knop); font-weight: 700; }
+
+/* Labels op de kaart */
+.pin-anker { background: none; border: 0; }
+.pin { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px 0 9px;
+  border-radius: 999px; white-space: nowrap; font-size: 12.5px; font-weight: 700; line-height: 1;
+  background: var(--vlak); color: var(--inkt2); border: 1px solid var(--lijn2); box-shadow: 0 5px 14px rgba(40, 25, 10, 0.16);
+  transition: transform 0.15s ease, opacity 0.2s ease; }
+.pin .stip { width: 10px; height: 10px; border-radius: 50%; background: var(--stil); flex-shrink: 0; }
+.pin.s1 { background: var(--rustig); color: var(--op-rustig); border-color: transparent; }
+.pin.s2 { background: var(--gezellig); color: var(--op-gezellig); border-color: transparent; }
+.pin.s3 { background: var(--druk); color: var(--op-druk); border-color: transparent; }
+.pin.s4 { background: var(--vol); color: var(--op-vol); border-color: transparent; }
+.pin.s1 .stip, .pin.s2 .stip, .pin.s3 .stip, .pin.s4 .stip { background: currentColor; }
+.pin.klein { width: 18px; height: 18px; padding: 0; gap: 0; justify-content: center; }
+.pin.klein .pin-naam { display: none; }
+.pin.klein .stip { width: 8px; height: 8px; }
+.pin.gedimd { opacity: 0.32; }
+.pin.actief { transform: translate(-50%, -50%) scale(1.08); box-shadow: 0 0 0 3px var(--grond), 0 0 0 5px var(--inkt); }
+.pin.sleepbaar { box-shadow: 0 0 0 3px var(--grond), 0 0 0 5px var(--accent); cursor: grab; }
+.ik { position: absolute; width: 18px; height: 18px; transform: translate(-50%, -50%); border-radius: 50%; background: #2B6FE6; border: 3px solid #FFFFFF; box-shadow: 0 0 0 8px rgba(43, 111, 230, 0.22); }
+.rnr { position: absolute; transform: translate(-50%, -50%); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--knop); color: var(--op-knop); font-size: 13px; font-weight: 700; border: 3px solid var(--vlak); box-shadow: var(--schaduw); }
+
+/* Blad onderin de kaart */
+.blad { position: absolute; z-index: 550; left: 0; right: 0; bottom: 0; height: var(--blad); background: var(--vlak);
+  border-radius: 26px 26px 0 0; box-shadow: 0 -10px 34px rgba(40, 25, 10, 0.16); display: flex; flex-direction: column; }
+.greep { width: 40px; height: 4px; border-radius: 2px; background: var(--lijn2); margin: 9px auto 0; flex-shrink: 0; }
+.bladkop { display: flex; align-items: baseline; gap: 6px; border: 0; background: none; text-align: left;
+  padding: 8px max(18px, env(safe-area-inset-right, 0px)) 0 max(18px, env(safe-area-inset-left, 0px)); }
+.bladtitel { font-family: var(--f-kop); font-size: 24px; line-height: 1.1; }
+.bladtitel em { font-style: italic; }
+.bladkop svg { color: var(--stil); align-self: center; }
+.bladsub { padding: 0 max(18px, env(safe-area-inset-left, 0px)); font-size: 12px; color: var(--stil); margin: 2px 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bladkaarten { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory;
+  padding: 0 max(18px, env(safe-area-inset-right, 0px)) 8px max(18px, env(safe-area-inset-left, 0px)); scroll-padding-left: 18px; }
+.bladkaarten::-webkit-scrollbar { display: none; }
+.bladkaarten .leeg { margin: 0; font-size: 13px; color: var(--inkt2); padding: 8px 0; max-width: 32em; }
+
+.zkaart { flex-shrink: 0; width: 236px; scroll-snap-align: start; display: flex; gap: 11px; align-items: center; padding: 10px;
+  border-radius: 16px; background: var(--grond); border: 1px solid var(--lijn); text-align: left; }
+.initiaal { width: 56px; height: 56px; flex-shrink: 0; border-radius: 13px; display: grid; place-items: center;
+  font-family: var(--f-kop); font-size: 30px; line-height: 1; background: var(--vlak2); color: var(--stil); }
+.initiaal.s1 { background: var(--rustig); color: var(--op-rustig); }
+.initiaal.s2 { background: var(--gezellig); color: var(--op-gezellig); }
+.initiaal.s3 { background: var(--druk); color: var(--op-druk); }
+.initiaal.s4 { background: var(--vol); color: var(--op-vol); }
+.zk-tekst { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.zk-naam { font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zk-sub { font-size: 12px; color: var(--inkt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zk-status { font-size: 12px; font-weight: 700; color: var(--stil); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t1 { color: var(--t-rustig); } .t2 { color: var(--t-gezellig); } .t3 { color: var(--t-druk); } .t4 { color: var(--t-vol); }
+
+/* ---------- Lijst ---------- */
+.zoekinvoer { display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 14px; border-radius: 14px; background: var(--vlak); border: 1px solid var(--lijn2); }
+.zoekinvoer input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 15px; }
+.zoekinvoer svg { color: var(--stil); flex-shrink: 0; }
+.lijstgroep { margin-top: 22px; }
+.lijstgroep h2 { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stil); margin-bottom: 4px; }
+.zrij { width: 100%; display: flex; gap: 13px; align-items: center; padding: 12px 0; border: 0; border-bottom: 1px solid var(--lijn); background: none; text-align: left; }
+.zrij .initiaal { width: 52px; height: 52px; font-size: 28px; }
+.zrij .zk-naam { font-size: 15.5px; }
+.zrij .zk-sub { font-size: 13px; }
+.zrij .rechts { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.statuspil { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  background: var(--vlak2); color: var(--inkt2); }
+.statuspil.s1 { background: var(--rustig); color: var(--op-rustig); }
+.statuspil.s2 { background: var(--gezellig); color: var(--op-gezellig); }
+.statuspil.s3 { background: var(--druk); color: var(--op-druk); }
+.statuspil.s4 { background: var(--vol); color: var(--op-vol); }
+.klein-grijs { font-size: 11.5px; color: var(--stil); font-variant-numeric: tabular-nums; }
+.lege-staat { margin-top: 28px; padding: 22px; border-radius: 18px; background: var(--vlak); border: 1px dashed var(--lijn2); color: var(--inkt2); font-size: 14px; }
+
+/* ---------- Lagen (sfeerkaart, invullen, menu) ---------- */
+.laag { position: fixed; inset: 0; z-index: 900; background: var(--grond); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  animation: inschuiven 0.24s ease-out; }
+@keyframes inschuiven { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .laag { animation: none; } .pin { transition: none; } }
+.laagbinnen { min-height: 100%; display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.laagkop { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; background: var(--grond);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px); padding-bottom: 10px;
+  padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+.laagkop .titel { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inhoud { padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
+
+.zaakkop { position: relative; overflow: hidden; padding-top: 6px; padding-bottom: 22px; }
+.zaakkop .watermerk { position: absolute; right: -12px; top: -40px; font-family: var(--f-kop); font-size: 230px; line-height: 1; color: var(--lijn2); pointer-events: none; user-select: none; }
+.zaakkop.s1 .watermerk { color: var(--rustig); opacity: 0.22; }
+.zaakkop.s2 .watermerk { color: var(--gezellig); opacity: 0.32; }
+.zaakkop.s3 .watermerk { color: var(--druk); opacity: 0.24; }
+.zaakkop.s4 .watermerk { color: var(--vol); opacity: 0.24; }
+.zaakkop .relatief { position: relative; }
+.zaakkop h1 { font-family: var(--f-kop); font-weight: 400; font-size: 42px; line-height: 1; letter-spacing: -0.02em; margin-top: 6px; max-width: 9em; }
+.zaakkop .meta { margin-top: 8px; color: var(--inkt2); font-size: 14px; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.badge { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: var(--vlak); border: 1px solid var(--lijn2); color: var(--inkt2); }
+.badge.let-op { background: var(--tip); color: var(--op-tip); border-color: transparent; }
+
+.blok { background: var(--vlak); border: 1px solid var(--lijn); border-radius: 18px; padding: 16px; }
+.statusblok { display: flex; flex-direction: column; gap: 10px; }
+.status-rij { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.status-rij .statuspil { height: 32px; padding: 0 13px; font-size: 14px; }
+.status-meta { font-size: 13px; color: var(--inkt2); }
+.betrouw { font-size: 13px; font-weight: 700; }
+.betrouw.goed { color: var(--t-rustig); } .betrouw.matig { color: var(--t-druk); } .betrouw.onbekend { color: var(--stil); font-weight: 600; }
+.knoppenrij { display: flex; gap: 8px; }
+.knop { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 16px; border-radius: 13px;
+  border: 1.5px solid var(--lijn2); background: transparent; color: var(--inkt); font-size: 14.5px; font-weight: 600; text-decoration: none; text-align: center; }
+.knop.vol { flex: 1; }
+.knop.hoofd { background: var(--knop); border-color: var(--knop); color: var(--op-knop); font-weight: 700; }
+.knop.goed { border-color: var(--rustig); color: var(--t-rustig); font-weight: 700; }
+.knop:disabled { opacity: 0.45; cursor: default; }
+.knop.link { border: 0; padding: 0; min-height: 0; color: var(--accent); font-weight: 700; }
+.actie { padding: 12px 14px; border-radius: 13px; background: var(--tip); color: var(--op-tip); font-size: 14px; }
+
+.sectiekop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 24px 0 10px; }
+.sectiekop h2 { font-family: var(--f-kop); font-weight: 400; font-size: 25px; }
+.vakken { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.vak { padding: 12px 14px; border-radius: 14px; background: var(--vlak); border: 1px solid var(--lijn); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vak .vk-label { font-size: 11.5px; font-weight: 600; color: var(--stil); }
+.vak .vk-waarde { font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.vak .vk-waarde.leeg { color: var(--stil); font-style: italic; }
+.tip { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 13px 15px; border-radius: 14px; background: var(--tip); color: var(--op-tip); font-size: 14px; }
+.tip svg { flex-shrink: 0; margin-top: 2px; }
+.info { margin-top: 18px; display: flex; flex-direction: column; border-top: 1px solid var(--lijn); }
+.info a, .info .info-rij { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 50px; border-bottom: 1px solid var(--lijn); color: var(--inkt); text-decoration: none; font-size: 14px; }
+.info .info-rij span:last-child, .info a span:last-child { color: var(--stil); font-size: 13px; text-align: right; }
+.onderbalk { position: sticky; bottom: 0; margin-top: auto; display: flex; gap: 10px; background: var(--grond);
+  padding-top: 12px; padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px));
+  border-top: 1px solid var(--lijn); }
+.ruimte { height: 24px; }
+
+/* Formulieren */
+.veld { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.veld label, .veld .label { font-size: 13px; font-weight: 700; color: var(--inkt2); }
+.veld input[type=text], .veld select, .veld textarea { width: 100%; min-height: 48px; padding: 11px 14px; border-radius: 13px; border: 1.5px solid var(--lijn2); background: var(--vlak); font-size: 15px; }
+.veld textarea { min-height: 72px; resize: vertical; }
+.veld input::placeholder, .veld textarea::placeholder { color: var(--stil); opacity: 0.75; }
+.keuzes { display: flex; flex-wrap: wrap; gap: 8px; }
+.keuze { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--lijn2); background: var(--vlak); font-size: 13.5px; font-weight: 600; }
+.keuze[aria-pressed="true"] { background: var(--knop); border-color: var(--knop); color: var(--op-knop); }
+.opties { display: flex; flex-direction: column; gap: 8px; }
+.optie { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 0 14px; border-radius: 14px; border: 1.5px solid var(--lijn2); background: var(--vlak); text-align: left; font-weight: 600; }
+.optie[aria-pressed="true"] { border-color: var(--inkt); box-shadow: inset 0 0 0 1px var(--inkt); }
+.optie .bolletje { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--lijn2); flex-shrink: 0; }
+.optie[aria-pressed="true"] .bolletje { border: 6px solid var(--inkt); }
+.stapper { display: inline-flex; align-items: center; gap: 4px; border: 1.5px solid var(--lijn2); border-radius: 14px; background: var(--vlak); padding: 3px; }
+.stapper button { width: 42px; height: 42px; border-radius: 11px; border: 0; background: var(--vlak2); font-size: 20px; font-weight: 600; }
+.stapper output { min-width: 44px; text-align: center; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+.segment { display: inline-flex; padding: 3px; border-radius: 14px; background: var(--vlak2); gap: 3px; }
+.segment button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 11px; background: transparent; font-weight: 600; font-size: 14px; color: var(--inkt2); }
+.segment button[aria-pressed="true"] { background: var(--vlak); color: var(--inkt); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); font-weight: 700; }
+.toelichting { font-size: 12.5px; color: var(--stil); margin: -6px 0 14px; }
+
+/* ---------- Route ---------- */
+.routekaart-wrap { border-radius: 18px; overflow: hidden; border: 1px solid var(--lijn); height: 210px; position: relative; background: var(--vlak2); }
+#routekaart { position: absolute; inset: 0; }
+.routekop { margin: 16px 0 4px; display: flex; flex-direction: column; gap: 8px; }
+.routekop h2 { font-family: var(--f-kop); font-weight: 400; font-size: 32px; line-height: 1.02; }
+.labels { display: flex; flex-wrap: wrap; gap: 6px; }
+.tijdlijn { display: flex; flex-direction: column; margin-top: 14px; }
+.stop { display: flex; gap: 12px; border: 0; background: none; text-align: left; padding: 0; width: 100%; }
+.stop .tl { display: flex; flex-direction: column; align-items: center; width: 46px; flex-shrink: 0; }
+.stop .tl b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.stop .tl i { width: 2px; flex: 1; background: var(--lijn2); margin: 6px 0 4px; }
+.stop:last-child .tl i { display: none; }
+.stop .st-body { flex: 1; min-width: 0; display: flex; gap: 12px; padding-bottom: 18px; }
+.stop .st-tekst { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.stop .st-etappe { font-size: 11.5px; font-weight: 700; color: var(--stil); letter-spacing: 0.02em; }
+.stop .st-naam { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.stop .st-sub { font-size: 13px; color: var(--inkt2); }
+.lopen { font-size: 12px; color: var(--stil); margin: -10px 0 12px 58px; display: flex; align-items: center; gap: 6px; }
+.waarschuwing { margin-top: 6px; padding: 12px 14px; border-radius: 13px; background: var(--tip); color: var(--op-tip); font-size: 13.5px; }
+details.wensen { margin-top: 22px; border-top: 1px solid var(--lijn); padding-top: 6px; }
+details.wensen summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; min-height: 48px; font-weight: 700; }
+details.wensen summary::-webkit-details-marker { display: none; }
+details.wensen summary svg { transition: transform 0.2s; }
+details.wensen[open] summary svg { transform: rotate(180deg); }
+
+/* ---------- Melden ---------- */
+.meldkop { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--vlak); border: 1px solid var(--lijn); margin-bottom: 12px; }
+.meldkop .logo { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--knop); color: var(--op-knop); font-family: var(--f-kop); font-size: 22px; flex-shrink: 0; }
+.meldkop .mk-tekst { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.meldkop select { border: 0; background: transparent; font-weight: 700; font-size: 15px; padding: 0; min-height: 30px; max-width: 100%; }
+.meldkop .mk-sub { font-size: 12px; color: var(--stil); }
+.gesprek { display: flex; flex-direction: column; gap: 9px; padding: 6px 0 12px; }
+.bericht { max-width: 84%; padding: 11px 14px; font-size: 14.5px; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; }
+.bericht.bot { align-self: flex-start; background: var(--vlak); border: 1px solid var(--lijn); border-radius: 16px 16px 16px 5px; }
+.bericht.zaak { align-self: flex-end; background: var(--knop); color: var(--op-knop); border-radius: 16px 16px 5px 16px; font-weight: 600; }
+.bericht .tijd { display: block; font-size: 10.5px; opacity: 0.6; margin-top: 4px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.tijdmarker { align-self: center; padding: 3px 10px; border-radius: 8px; background: var(--vlak2); font-size: 11px; font-weight: 600; color: var(--inkt2); }
+.snelknoppen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 8px 0; }
+.snelknoppen button { min-height: 52px; border-radius: 13px; border: 0; font-weight: 700; font-size: 13px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+.snelknoppen b { font-size: 18px; }
+.sk1 { background: var(--rustig); color: var(--op-rustig); } .sk2 { background: var(--gezellig); color: var(--op-gezellig); }
+.sk3 { background: var(--druk); color: var(--op-druk); } .sk4 { background: var(--vol); color: var(--op-vol); }
+.invoerrij { display: flex; gap: 8px; align-items: center; }
+.invoerrij input { flex: 1; min-width: 0; height: 48px; padding: 0 16px; border-radius: 24px; border: 1.5px solid var(--lijn2); background: var(--vlak); font-size: 15px; }
+.invoerrij button { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--knop); color: var(--op-knop); display: grid; place-items: center; flex-shrink: 0; }
+.meldvoet { flex-shrink: 0; background: var(--grond); border-top: 1px solid var(--lijn);
+  padding-top: 6px; padding-bottom: 10px; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
+
+/* ---------- Menu ---------- */
+.menu-achter { position: fixed; inset: 0; z-index: 950; background: rgba(20, 14, 8, 0.38); display: flex; align-items: flex-end; justify-content: center; }
+.menu-blad { width: 100%; max-width: 560px; max-height: 88%; overflow-y: auto; background: var(--grond); border-radius: 26px 26px 0 0;
+  padding-top: 8px; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); animation: inschuiven 0.22s ease-out; }
+.menu-blad h2 { font-family: var(--f-kop); font-weight: 400; font-size: 30px; margin: 8px 0 4px; }
+.menugroep { padding: 16px 0; border-bottom: 1px solid var(--lijn); display: flex; flex-direction: column; gap: 10px; }
+.menugroep:last-child { border-bottom: 0; }
+.menugroep h3 { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stil); }
+.menugroep p { margin: 0; font-size: 13.5px; color: var(--inkt2); }
+.schakelaar { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 48px; border: 0; background: none; padding: 0; text-align: left; font-weight: 600; width: 100%; }
+.schakelaar .sch { width: 50px; height: 30px; border-radius: 15px; background: var(--lijn2); position: relative; flex-shrink: 0; transition: background 0.2s; }
+.schakelaar .sch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--vlak); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: transform 0.2s; }
+.schakelaar[aria-checked="true"] .sch { background: var(--rustig); }
+.schakelaar[aria-checked="true"] .sch::after { transform: translateX(20px); }
+.knoppenstapel { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- Welkom ---------- */
+.welkom { position: fixed; inset: 0; z-index: 960; background: rgba(20, 14, 8, 0.42); display: grid; place-items: center; padding: 20px; }
+.welkomkaart { width: 100%; max-width: 380px; background: var(--grond); border-radius: 24px; padding: 26px 22px 20px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3); }
+.welkomkaart h2 { font-family: var(--f-kop); font-weight: 400; font-size: 44px; line-height: 1; color: var(--accent); }
+.welkomkaart p { color: var(--inkt2); font-size: 14.5px; margin: 12px 0 0; }
+.welkomkaart .knoppen { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+
+/* ---------- Tabbalk en melding ---------- */
+.tabbalk { position: fixed; left: 0; right: 0; bottom: 0; z-index: 800; height: var(--tab); display: flex; justify-content: space-around; align-items: flex-start;
+  background: var(--vlak); border-top: 1px solid var(--lijn);
+  padding: 6px max(6px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(6px, env(safe-area-inset-left, 0px)); }
+.tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 64px; height: 50px; border: 0; background: none; color: var(--stil); font-size: 11px; font-weight: 600; }
+.tab[aria-current="page"] { color: var(--inkt); font-weight: 700; }
+.tab[aria-current="page"] svg { color: var(--accent); }
+.toast { position: fixed; z-index: 990; left: 50%; bottom: calc(var(--tab) + 18px); transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  max-width: calc(100% - 32px); width: max-content; padding: 12px 16px; border-radius: 14px; background: var(--knop); color: var(--op-knop);
+  font-size: 13.5px; font-weight: 600; box-shadow: var(--schaduw); transition: opacity 0.2s, transform 0.2s; }
+.toast.zichtbaar { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Kaart -->
+  <section id="scherm-kaart" class="scherm" aria-label="Kaart">
+    <div id="kaart" role="application" aria-label="Kaart met zaken"></div>
+    <div id="kaart-fout" class="kaart-fout" hidden>
+      <p>De kaart kon niet laden. Controleer of je internet hebt. De lijst, de sfeerkaarten en de route werken wel.</p>
+    </div>
+    <header class="kop">
+      <div class="zoekrij">
+        <button class="zoekveld" id="naar-zoeken" type="button">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <span class="z-tekst" id="zoek-placeholder">Zoek in Den Haag</span>
+          <span class="woordmerk">Vanavond</span>
+        </button>
+        <button class="rondknop" id="menu-knop" type="button" aria-label="Menu en instellingen">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
+      <div class="chips" data-chips role="group" aria-label="Filter"></div>
+    </header>
+    <div class="kaartknoppen">
+      <button class="rondknop klein" id="ik-knop" type="button" aria-label="Toon waar ik ben">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
+      </button>
+      <button class="rondknop klein" id="passend-knop" type="button" aria-label="Toon alle zaken">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+    </div>
+    <div id="sleepbalk" class="sleepbalk" hidden role="status"><span id="sleep-tekst"></span><button type="button" id="sleep-klaar">Klaar</button></div>
+    <div class="kaartvoet">
+      <div class="demobalk" id="demobalk" hidden>
+        <div class="d-tekst"><span class="d-label">Voorbeeldavond</span><span class="d-tijd" id="demo-tijd">22:30</span></div>
+        <label class="vh" for="demo-schuif">Tijdstip van de voorbeeldavond</label>
+        <input type="range" id="demo-schuif" min="1140" max="1560" step="15" value="1350">
+        <button type="button" id="demo-stop">Stop</button>
+      </div>
+      <div class="legenda" aria-label="Betekenis van de kleuren">
+        <span><i style="background:var(--rustig)"></i>rustig</span>
+        <span><i style="background:var(--gezellig)"></i>gezellig</span>
+        <span><i style="background:var(--druk)"></i>druk</span>
+        <span><i style="background:var(--vol)"></i>vol</span>
+      </div>
+    </div>
+    <div class="blad">
+      <div class="greep" aria-hidden="true"></div>
+      <button class="bladkop" type="button" id="stad-knop" aria-label="Kies een andere stad">
+        <span class="bladtitel">Vanavond in <em id="stadnaam">Den Haag</em></span>
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="bladsub" id="bladsub"></div>
+      <div class="bladkaarten" id="bladkaarten"></div>
+    </div>
+  </section>
+
+  <!-- Lijst -->
+  <section id="scherm-lijst" class="scherm" aria-label="Lijst" hidden>
+    <div class="scherm-scroll">
+      <div class="schermkop">
+        <span class="oogje" id="lijst-oogje">Den Haag</span>
+        <h1>Alle zaken</h1>
+      </div>
+      <div class="zoekinvoer">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <label class="vh" for="zoek-invoer">Zoek op naam of straat</label>
+        <input type="search" id="zoek-invoer" placeholder="Zoek op naam of straat" autocomplete="off">
+      </div>
+      <div class="chips" data-chips role="group" aria-label="Filter" style="margin-top:12px"></div>
+      <div id="lijst-inhoud"></div>
+    </div>
+  </section>
+
+  <!-- Route -->
+  <section id="scherm-route" class="scherm" aria-label="Avondroute" hidden>
+    <div class="scherm-scroll" id="route-scroll">
+      <div class="schermkop">
+        <span class="oogje">Voor een groep</span>
+        <h1>Avondroute</h1>
+        <p>Vertel met wie je uitgaat en wat jullie willen. Je krijgt drie zaken op loopafstand, in de goede volgorde.</p>
+      </div>
+      <div id="route-resultaat" hidden>
+        <div class="routekaart-wrap"><div id="routekaart" aria-label="Kaart van de route"></div></div>
+        <div id="route-lijst"></div>
+      </div>
+      <div id="route-form"></div>
+    </div>
+  </section>
+
+  <!-- Zaak meldt -->
+  <section id="scherm-melden" class="scherm" aria-label="Zaak meldt" hidden>
+    <div class="scherm-scroll" id="meld-scroll">
+      <div class="schermkop">
+        <span class="oogje">Voor zaken</span>
+        <h1>Zo meldt een zaak</h1>
+        <p>Een medewerker stuurt één cijfer, en de kaart verandert meteen. In de echte versie gaat dit via WhatsApp.</p>
+      </div>
+      <div class="meldkop">
+        <div class="logo" aria-hidden="true">V</div>
+        <div class="mk-tekst">
+          <label class="vh" for="meld-zaak">Namens welke zaak meld je?</label>
+          <select id="meld-zaak"></select>
+          <span class="mk-sub" id="meld-sub"></span>
+        </div>
+      </div>
+      <div class="gesprek" id="gesprek" aria-live="polite"></div>
+    </div>
+    <div class="meldvoet">
+      <div class="snelknoppen" role="group" aria-label="Meld de drukte">
+        <button type="button" class="sk1" data-meld="1"><b>1</b>Rustig</button>
+        <button type="button" class="sk2" data-meld="2"><b>2</b>Gezellig</button>
+        <button type="button" class="sk3" data-meld="3"><b>3</b>Druk</button>
+        <button type="button" class="sk4" data-meld="4"><b>4</b>Vol</button>
+      </div>
+      <form class="invoerrij" id="meld-form" autocomplete="off">
+        <label class="vh" for="meld-invoer">Bericht</label>
+        <input type="text" id="meld-invoer" placeholder="Typ een cijfer of een nu-actie" maxlength="90">
+        <button type="submit" aria-label="Verstuur">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Lagen -->
+  <section id="laag-zaak" class="laag" hidden aria-label="Sfeerkaart"></section>
+  <section id="laag-bewerk" class="laag" hidden aria-label="Sfeerkaart invullen"></section>
+
+  <div id="laag-menu" class="menu-achter" hidden>
+    <div class="menu-blad" role="dialog" aria-modal="true" aria-labelledby="menu-titel">
+      <div class="greep" aria-hidden="true"></div>
+      <h2 id="menu-titel">Vanavond</h2>
+      <div class="menugroep">
+        <h3>Stad</h3>
+        <div class="segment" id="menu-stad" role="group" aria-label="Stad"></div>
+      </div>
+      <div class="menugroep">
+        <h3>Voorbeeldavond</h3>
+        <button type="button" class="schakelaar" role="switch" id="menu-demo" aria-checked="false"><span>Speel een avond af met gesimuleerde drukte</span><span class="sch" aria-hidden="true"></span></button>
+        <p>Handig om te laten zien hoe het werkt. Met de schuif op de kaart loop je door de avond. De drukte is verzonnen en dat staat er ook bij.</p>
+      </div>
+      <div class="menugroep">
+        <h3>Weergave</h3>
+        <div class="segment" id="menu-thema" role="group" aria-label="Weergave"></div>
+        <p>Automatisch wordt donker na zonsondergang.</p>
+      </div>
+      <div class="menugroep">
+        <h3>Jouw gegevens</h3>
+        <p id="menu-voortgang"></p>
+        <p>Wat je invult, staat alleen op dit toestel. Bewaar het als bestand om het op een ander toestel in te laden.</p>
+        <div class="knoppenstapel">
+          <button type="button" class="knop" id="menu-export">Bewaar als bestand</button>
+          <label class="knop" for="menu-import-bestand">Laad een bestand in</label>
+          <input type="file" id="menu-import-bestand" accept="application/json,.json" class="vh">
+          <button type="button" class="knop" id="menu-wis">Wis alles</button>
+        </div>
+      </div>
+      <div class="menugroep">
+        <h3>Over deze demo</h3>
+        <p>De zaken en adressen zijn echt. Sfeer, publiek en drukte zijn alleen te zien als iemand ze heeft ingevuld of gemeld. Kaart © OpenStreetMap-bijdragers en CARTO. Posities komen uit de adresgegevens van PDOK.</p>
+        <button type="button" class="knop hoofd" id="menu-sluit">Sluiten</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="welkom" class="welkom" hidden>
+    <div class="welkomkaart" role="dialog" aria-modal="true" aria-labelledby="welkom-titel">
+      <h2 id="welkom-titel">Vanavond</h2>
+      <p>Een eerste versie van een app die laat zien waar je vanavond goed zit. De zaken en adressen zijn echt. Sfeer, publiek en drukte vul je zelf in, of je meldt ze als zaak.</p>
+      <p>Wil je meteen zien hoe het werkt? Speel een voorbeeldavond af.</p>
+      <div class="knoppen">
+        <button type="button" class="knop hoofd" id="welkom-demo">Speel een voorbeeldavond af</button>
+        <button type="button" class="knop" id="welkom-sluit">Zelf rondkijken</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="tabbalk" aria-label="Hoofdmenu">
+    <button type="button" class="tab" data-tab="kaart" aria-current="page">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Kaart
+    </button>
+    <button type="button" class="tab" data-tab="lijst">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>Lijst
+    </button>
+    <button type="button" class="tab" data-tab="route">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18h6a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h5"/><circle cx="18" cy="6" r="2"/><circle cx="4" cy="18" r="2"/></svg>Route
+    </button>
+    <button type="button" class="tab" data-tab="melden">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h.01M12 10h.01M16 10h.01" stroke-linecap="round" stroke-width="2.6"/></svg>Zaak meldt
+    </button>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+'use strict';
+
+// ================= Vaste gegevens =================
+const OPSLAG_SLEUTEL = 'vanavond.demo.v1';
+const GELDIG_MINUTEN = 45;            // een melding van een zaak blijft zo lang zichtbaar
+const STEDEN = {
+  'Den Haag': { midden: [52.0785, 4.3110], plaats: "'s-Gravenhage" },
+  'Breda':    { midden: [51.5893, 4.7765], plaats: 'Breda' }
+};
+
+// Echte zaken met hun adres. Sfeer en drukte staan hier bewust niet in: die vult Jurgen zelf in.
+// 'schat' is een geschatte positie tot het adres is opgezocht; 'zeker' zegt of het adres bevestigd is.
+const BASIS_ZAKEN = [
+  { id: 'dh-zwarte-ruiter', naam: 'De Zwarte Ruiter', stad: 'Den Haag', adres: 'Grote Markt 27', postcode: '2511 BG', website: 'https://zwarteruiter.nl', zeker: true, schat: [52.0764, 4.3077] },
+  { id: 'dh-september', naam: 'September', stad: 'Den Haag', adres: 'Grote Markt 26', postcode: '2511 BG', website: 'https://www.september.nl', zeker: true, schat: [52.0765, 4.3079] },
+  { id: 'dh-vavoom', naam: 'Cocktailbar VaVoom', stad: 'Den Haag', adres: 'Grote Markt 29', postcode: '2511 BG', website: 'https://vavoomtikiroom.nl', zeker: true, schat: [52.0763, 4.3075] },
+  { id: 'dh-boterwaag', naam: 'De Boterwaag', stad: 'Den Haag', adres: 'Grote Markt 8a', postcode: null, website: null, zeker: true, schat: [52.0761, 4.3084] },
+  { id: 'dh-zeta', naam: 'Zèta', stad: 'Den Haag', adres: 'Grote Markt 28', postcode: null, website: null, zeker: false, schat: [52.0764, 4.3076] },
+  { id: 'dh-rootz', naam: 'Rootz', stad: 'Den Haag', adres: 'Grote Marktstraat 14', postcode: '2511 BJ', website: 'https://rootz.nl', zeker: true, schat: [52.0769, 4.3094] },
+  { id: 'dh-paard', naam: 'PAARD', stad: 'Den Haag', adres: 'Prinsegracht 12', postcode: '2512 GA', website: 'https://www.paard.nl', zeker: true, schat: [52.0757, 4.3070] },
+  { id: 'dh-goude-hooft', naam: "'t Goude Hooft", stad: 'Den Haag', adres: 'Dagelijkse Groenmarkt 13', postcode: '2513 AL', website: 'https://tgoudehooft.nl', zeker: true, schat: [52.0779, 4.3087] },
+  { id: 'dh-danzig', naam: 'Danzig', stad: 'Den Haag', adres: 'Lange Houtstraat 9', postcode: '2511 CV', website: null, zeker: true, schat: [52.0795, 4.3157] },
+  { id: 'dh-lustig', naam: 'Club Lustig', stad: 'Den Haag', adres: 'Spui 6', postcode: '2511 BS', website: null, zeker: true, schat: [52.0787, 4.3156] },
+  { id: 'dh-fiddler', naam: 'The Fiddler', stad: 'Den Haag', adres: 'Riviervismarkt 1', postcode: null, website: null, zeker: true, schat: [52.0774, 4.3080] },
+  { id: 'dh-ocaseys', naam: "O'Casey's", stad: 'Den Haag', adres: 'Noordeinde 140', postcode: null, website: null, zeker: true, schat: [52.0838, 4.3057] },
+  { id: 'dh-de-paas', naam: 'De Paas', stad: 'Den Haag', adres: 'Dunne Bierkade 16a', postcode: null, website: null, zeker: true, schat: [52.0744, 4.3144] },
+  { id: 'dh-huppel', naam: 'Huppel the Pub', stad: 'Den Haag', adres: 'Oude Molstraat 21', postcode: null, website: null, zeker: true, schat: [52.0787, 4.3064] },
+  { id: 'dh-murphys', naam: "Murphy's Law", stad: 'Den Haag', adres: 'Dr. Kuyperstraat 7', postcode: null, website: null, zeker: false, schat: [52.0869, 4.3050] },
+  { id: 'dh-korzo', naam: 'Korzo', stad: 'Den Haag', adres: 'Prinsestraat 42', postcode: null, website: null, zeker: false, schat: [52.0798, 4.3048] },
+  { id: 'dh-barlow', naam: 'Barlow', stad: 'Den Haag', adres: 'Plein 15-16', postcode: null, website: null, zeker: false, schat: [52.0804, 4.3150] },
+  { id: 'dh-de-la-gare', naam: 'Café De La Gare', stad: 'Den Haag', adres: 'Nieuwe Schoolstraat 13a', postcode: null, website: null, zeker: false, schat: [52.0835, 4.3133] },
+  { id: 'br-beyerd', naam: 'De Beyerd', stad: 'Breda', adres: 'Boschstraat 26', postcode: null, website: null, zeker: true, schat: [51.5919, 4.7758] },
+  { id: 'br-bruxelles', naam: 'Café Bruxelles', stad: 'Breda', adres: 'Havermarkt 5', postcode: null, website: null, zeker: false, schat: [51.5896, 4.7742] },
+  { id: 'br-bruine-pij', naam: 'De Bruine Pij', stad: 'Breda', adres: 'Kerkplein 7', postcode: null, website: null, zeker: true, schat: [51.5890, 4.7756] },
+  { id: 'br-omearas', naam: "O'Mearas Irish Pub", stad: 'Breda', adres: 'Reigerstraat 6', postcode: null, website: null, zeker: true, schat: [51.5878, 4.7770] },
+  { id: 'br-bommel', naam: 'Café de Bommel', stad: 'Breda', adres: 'Halstraat 1', postcode: null, website: null, zeker: true, schat: [51.5883, 4.7765] },
+  { id: 'br-vulling', naam: 'Café Vulling', stad: 'Breda', adres: 'Grote Markt 16', postcode: null, website: null, zeker: true, schat: [51.5884, 4.7759] },
+  { id: 'br-mezz', naam: 'Mezz', stad: 'Breda', adres: 'Keizerstraat 101', postcode: null, website: null, zeker: false, schat: [51.5906, 4.7825] },
+  { id: 'br-kleine-wereld', naam: 'Café De Kleine Wereld', stad: 'Breda', adres: 'Grote Markt 59', postcode: null, website: null, zeker: false, schat: [51.5878, 4.7761] },
+  { id: 'br-el-mundo', naam: 'El Mundo', stad: 'Breda', adres: 'Haven 7', postcode: null, website: null, zeker: false, schat: [51.5908, 4.7748] },
+  { id: 'br-speeltuin', naam: 'Café De Speeltuin', stad: 'Breda', adres: 'Visserstraat 14', postcode: null, website: null, zeker: false, schat: [51.5898, 4.7777] }
+];
+const ZAKEN = Object.fromEntries(BASIS_ZAKEN.map(z => [z.id, z]));
+
+const NIVEAUS = { 1: 'Rustig', 2: 'Gezellig', 3: 'Druk', 4: 'Vol' };
+const FILTERS = [['alles', 'Alles'], ['praten', 'Praten'], ['borrel', 'Borrel'], ['dansen', 'Dansen'], ['live', 'Live muziek'], ['nu', 'Nu live']];
+const SOORTEN_AVOND = [['praten', 'Praten'], ['borrel', 'Borrel'], ['dansen', 'Dansen'], ['live', 'Live muziek']];
+const LEEFTIJDEN = ['18-25', '25-35', '35-50', '50+'];
+const VELDEN = [
+  { k: 'soort', label: 'Soort zaak', voorbeeld: 'Bruin café, cocktailbar, club …' },
+  { k: 'open', label: 'Open', voorbeeld: 'Do t/m za tot 02:00' },
+  { k: 'muziek', label: 'Muziek', voorbeeld: 'Soul en jaren 80, zacht tot 23:00' },
+  { k: 'praten', label: 'Kun je praten?', voorbeeld: 'Ja, tot 23:00' },
+  { k: 'prijs', label: 'Prijs', voorbeeld: 'Bier € 3,40 · geen entree' },
+  { k: 'drukte', label: 'Drukste moment', voorbeeld: '22:30 tot 00:30' },
+  { k: 'huisregels', label: 'Huisregels', voorbeeld: "Geen foto's binnen · 18+" },
+  { k: 'beste', label: 'Beste moment om te komen', voorbeeld: 'Kom voor 22:00 voor een tafel', groot: true }
+];
+const WENSEN = {
+  'praten-dansen': { label: 'Eerst praten, later dansen', etappes: [['praten', 'Begin · rustig praten'], ['borrel', 'Dan · gezellig, nog te verstaan'], ['dansen', 'Afsluiten · dansen']] },
+  'borrelen':      { label: 'Rustig borrelen', etappes: [['praten', 'Begin · bijpraten'], ['borrel', 'Dan · borrel'], ['praten', 'Afsluiten · laatste drankje']] },
+  'dansen':        { label: 'Vooral dansen', etappes: [['borrel', 'Opwarmen'], ['dansen', 'Dansen'], ['dansen', 'Doorgaan']] },
+  'live':          { label: 'Live muziek', etappes: [['borrel', 'Begin · borrel'], ['live', 'Live muziek'], ['borrel', 'Afsluiten']] }
+};
+
+// ================= Opslag =================
+function standaardStaat() {
+  return { versie: 1, stad: 'Den Haag', thema: 'auto', filter: 'alles', zoek: '', invul: {}, posities: {}, geoMislukt: {},
+    status: {}, stemmen: {}, klopt: {}, berichten: {}, meldZaak: null, route: null,
+    demo: { aan: false, minuten: 1350 }, welkomGezien: false };
+}
+function laad() {
+  try {
+    const tekst = localStorage.getItem(OPSLAG_SLEUTEL);
+    if (tekst) return Object.assign(standaardStaat(), JSON.parse(tekst));
+  } catch (e) { /* geen opslag beschikbaar */ }
+  return standaardStaat();
+}
+let staat = laad();
+let bewaarTimer = null;
+function bewaar() {
+  clearTimeout(bewaarTimer);
+  bewaarTimer = setTimeout(() => { try { localStorage.setItem(OPSLAG_SLEUTEL, JSON.stringify(staat)); } catch (e) { /* vol of geblokkeerd */ } }, 150);
+}
+
+// ================= Hulpjes =================
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+function esc(t) { return String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function klok(ms) { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function klokMin(min) { const m = ((Math.round(min) % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+function afstandKm(a, b) {
+  const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+function loopMinuten(km) { return Math.max(1, Math.round(km * 1.3 / 4.8 * 60)); }
+function hash(t) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function initiaal(naam) {
+  let n = naam;
+  for (let i = 0; i < 2; i++) n = n.replace(/^(de|het|'t|café|cafe|club|cocktailbar|the)\s+/i, '');
+  return (n.replace(/^[^A-Za-zÀ-ÿ]+/, '').charAt(0) || naam.charAt(0)).toUpperCase();
+}
+let toastTimer = null;
+function toast(tekst) {
+  const el = $('#toast'); el.textContent = tekst; el.classList.add('zichtbaar');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zichtbaar'), 3600);
+}
+function middenVan(stad) { const m = STEDEN[stad].midden; return { lat: m[0], lng: m[1] }; }
+
+// ================= Zaken =================
+function invul(id) { return staat.invul[id] || {}; }
+function positie(z) { return staat.posities[z.id] || { lat: z.schat[0], lng: z.schat[1], bron: 'schatting' }; }
+function zakenInStad(stad = staat.stad) { return BASIS_ZAKEN.filter(z => z.stad === stad); }
+function isIngevuld(id) {
+  const i = invul(id);
+  return VELDEN.some(v => (i[v.k] || '').trim()) || (i.tags || []).length > 0 || (i.publiek || []).length > 0 || !!(i.publiekTekst || '').trim();
+}
+function voldoetFilter(z) {
+  const f = staat.filter;
+  if (f === 'alles') return true;
+  if (f === 'nu') return !!huidigeStatus(z.id);
+  return (invul(z.id).tags || []).includes(f);
+}
+function voldoetZoek(z) {
+  const q = (staat.zoek || '').trim().toLowerCase();
+  if (!q) return true;
+  return (z.naam + ' ' + z.adres + ' ' + (invul(z.id).soort || '')).toLowerCase().includes(q);
+}
+
+// ================= Tijd en drukte =================
+// Tijdens de voorbeeldavond loopt de klok van de app op de schuif, anders op de echte tijd.
+function nuMs() {
+  if (!staat.demo.aan) return Date.now();
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  return d.getTime() + staat.demo.minuten * 60000;
+}
+function simuleerNiveau(id, minuten) {
+  const h = hash(id);
+  const piek = 21 * 60 + (h % 240);                // ergens tussen 21:00 en 01:00
+  const breedte = 70 + ((h >>> 8) % 70);
+  const max = 2.3 + ((h >>> 12) % 9) / 5;           // 2,3 tot 4
+  const x = (minuten - piek) / breedte;
+  const ruis = ((((h >>> 4) + Math.floor(minuten / 30)) % 3) - 1) * 0.3;
+  const waarde = 1 + (max - 1) * Math.exp(-x * x / 2) + ruis;
+  return Math.min(4, Math.max(1, Math.round(waarde)));
+}
+function huidigeStatus(id) {
+  if (staat.demo.aan) return { niveau: simuleerNiveau(id, staat.demo.minuten), demo: true };
+  const s = staat.status[id];
+  if (!s) return null;
+  const leeftijd = (Date.now() - s.tijd) / 60000;
+  if (leeftijd > GELDIG_MINUTEN || leeftijd < -1) return null;
+  return { niveau: s.niveau, tijd: s.tijd, actie: s.actie || '', minuten: Math.max(0, Math.round(leeftijd)), demo: false };
+}
+function statusKlasse(st) { return st ? 's' + st.niveau : 's0'; }
+function statusTekst(st) {
+  if (!st) return 'Geen live info';
+  if (st.demo) return NIVEAUS[st.niveau] + ' · voorbeeld';
+  return NIVEAUS[st.niveau] + ' · ' + (st.minuten < 1 ? 'zojuist' : st.minuten + ' min');
+}
+function betrouwbaarheid(id) {
+  const k = staat.klopt[id] || { ja: 0, nee: 0 };
+  const n = k.ja + k.nee;
+  return { n, pct: n ? Math.round(100 * k.ja / n) : null };
+}
+function betrouwHtml(id) {
+  const b = betrouwbaarheid(id);
+  if (b.n < 3) return `<span class="betrouw onbekend">Nog te weinig bevestigingen voor een betrouwbaarheidsscore${b.n ? ` (${b.n})` : ''}</span>`;
+  return `<span class="betrouw ${b.pct >= 75 ? 'goed' : 'matig'}">Meldingen van deze zaak klopten ${b.pct}% van de tijd (${b.n} bevestigingen)</span>`;
+}
+
+// Zonsondergang en -opkomst (benadering), voor de automatische nachtstand.
+function zonTijden(d, lat, lng) {
+  const r = Math.PI / 180;
+  const n = Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(d.getFullYear(), 0, 0)) / 864e5);
+  const g = 2 * Math.PI / 365 * (n - 1);
+  const vgl = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+  const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+  const ha = Math.acos(Math.cos(90.833 * r) / (Math.cos(lat * r) * Math.cos(decl)) - Math.tan(lat * r) * Math.tan(decl)) / r;
+  const middernacht = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  return { op: middernacht + (720 - 4 * (lng + ha) - vgl) * 60000, onder: middernacht + (720 - 4 * (lng - ha) - vgl) * 60000 };
+}
+function isNacht() {
+  if (staat.thema === 'nacht') return true;
+  if (staat.thema === 'dag') return false;
+  const t = nuMs(), m = STEDEN[staat.stad].midden, z = zonTijden(new Date(t), m[0], m[1]);
+  return t < z.op || t >= z.onder;
+}
+let nachtNu = null;
+function pasThemaToe(forceer) {
+  const nacht = isNacht();
+  if (nacht === nachtNu && !forceer) return;
+  nachtNu = nacht;
+  document.documentElement.classList.toggle('nacht', nacht);
+  const meta = $('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', nacht ? '#14131B' : '#F6F1E8');
+  zetTegels();
+}
+
+// ================= Kaart =================
+let kaart = null, tegels = null, routeKaart = null, routeTegels = null, routeLaag = null;
+let markers = {}, ikMarker = null, ikPos = null, geselecteerd = null, sleepId = null, gebruikerBewoog = false;
+
+function tegelUrl() {
+  return isNacht()
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+}
+const TEGEL_OPTIES = { maxZoom: 19, subdomains: 'abcd',
+  attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>' };
+let tegelFouten = 0;
+function zetTegels() {
+  if (!window.L) return;
+  if (kaart) {
+    if (tegels) kaart.removeLayer(tegels);
+    tegels = L.tileLayer(tegelUrl(), TEGEL_OPTIES);
+    tegels.on('tileerror', () => { tegelFouten++; if (tegelFouten === 6) toast('De kaartbeelden laden niet. Is er internet?'); });
+    tegels.addTo(kaart);
+  }
+  if (routeKaart) {
+    if (routeTegels) routeKaart.removeLayer(routeTegels);
+    routeTegels = L.tileLayer(tegelUrl(), TEGEL_OPTIES).addTo(routeKaart);
+  }
+}
+function maakKaart() {
+  if (!window.L) { $('#kaart-fout').hidden = false; return; }
+  kaart = L.map('kaart', { zoomControl: false, attributionControl: true, minZoom: 12, maxZoom: 19 });
+  kaart.attributionControl.setPrefix(false);
+  kaart.setView(STEDEN[staat.stad].midden, 16);
+  zetTegels();
+  kaart.on('dragstart', () => { gebruikerBewoog = true; });
+  kaart.on('zoomend', ontwar);
+  kaart.on('moveend', () => { ontwar(); vulBlad(); });
+}
+function pinIcoon(z) {
+  const st = huidigeStatus(z.id);
+  const klassen = ['pin', statusKlasse(st)];
+  if (!voldoetFilter(z)) klassen.push('gedimd');
+  if (geselecteerd === z.id) klassen.push('actief');
+  if (sleepId === z.id) klassen.push('sleepbaar');
+  return L.divIcon({ className: 'pin-anker', iconSize: [0, 0], iconAnchor: [0, 0],
+    html: `<div class="${klassen.join(' ')}" data-pin="${z.id}"><span class="stip"></span><span class="pin-naam">${esc(z.naam)}</span></div>` });
+}
+function tekenMarkers() {
+  if (!kaart) return;
+  Object.values(markers).forEach(m => kaart.removeLayer(m));
+  markers = {};
+  for (const z of zakenInStad()) {
+    const p = positie(z);
+    const m = L.marker([p.lat, p.lng], { icon: pinIcoon(z), keyboard: true, title: z.naam, alt: z.naam, riseOnHover: true });
+    m.on('click', () => { if (!sleepId) openZaak(z.id); });
+    m.addTo(kaart);
+    markers[z.id] = m;
+  }
+  ontwar();
+}
+function verversPins() {
+  if (!kaart) return;
+  for (const z of zakenInStad()) { const m = markers[z.id]; if (m) m.setIcon(pinIcoon(z)); }
+  ontwar();
+}
+// Voorkom dat namen over elkaar vallen: belangrijke zaken houden hun naam, de rest wordt een stip.
+function prioriteit(z) {
+  let p = 0;
+  if (geselecteerd === z.id) p += 1000;
+  if (voldoetFilter(z)) p += 100;
+  const st = huidigeStatus(z.id); if (st) p += 20 + st.niveau;
+  if (isIngevuld(z.id)) p += 10;
+  return p + (hash(z.id) % 7) / 10;
+}
+function ontwar() {
+  if (!kaart) return;
+  const geplaatst = [];
+  const lijst = zakenInStad().filter(z => markers[z.id]).sort((a, b) => prioriteit(b) - prioriteit(a));
+  lijst.forEach((z, volgorde) => {
+    const m = markers[z.id], el = m.getElement(); if (!el) return;
+    const pin = el.querySelector('.pin'); if (!pin) return;
+    const pt = kaart.latLngToContainerPoint(m.getLatLng());
+    const b = 7.3 * z.naam.length + 40, h = 36;
+    const doos = { x1: pt.x - b / 2, x2: pt.x + b / 2, y1: pt.y - h / 2, y2: pt.y + h / 2 };
+    const botst = geplaatst.some(g => !(doos.x2 < g.x1 || doos.x1 > g.x2 || doos.y2 < g.y1 || doos.y1 > g.y2));
+    const klein = botst && geselecteerd !== z.id;
+    pin.classList.toggle('klein', klein);
+    m.setZIndexOffset(klein ? -500 : (lijst.length - volgorde) * 10);
+    if (!klein) geplaatst.push(doos);
+  });
+}
+function passendInBeeld() {
+  if (!kaart) return;
+  const punten = zakenInStad().map(z => { const p = positie(z); return [p.lat, p.lng]; });
+  if (!punten.length) return;
+  kaart.fitBounds(L.latLngBounds(punten), { paddingTopLeft: [30, 150], paddingBottomRight: [30, 250], maxZoom: 17 });
+}
+function toonIk() {
+  if (!navigator.geolocation) { toast('Je locatie is op dit toestel niet beschikbaar.'); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    ikPos = { lat: p.coords.latitude, lng: p.coords.longitude };
+    if (kaart) {
+      const icoon = L.divIcon({ className: 'pin-anker', iconSize: [0, 0], iconAnchor: [0, 0], html: '<div class="ik"></div>' });
+      if (!ikMarker) ikMarker = L.marker([ikPos.lat, ikPos.lng], { icon: icoon, interactive: false, keyboard: false, zIndexOffset: -1000 }).addTo(kaart);
+      else ikMarker.setLatLng([ikPos.lat, ikPos.lng]);
+      if (afstandKm(ikPos, middenVan(staat.stad)) < 6) kaart.setView([ikPos.lat, ikPos.lng], 17);
+      else toast(`Je bent niet in ${staat.stad}. Afstanden gaan uit van het midden van de kaart.`);
+    }
+    vulBlad();
+  }, () => toast('Locatie niet gedeeld. Afstanden gaan uit van het midden van de kaart.'), { enableHighAccuracy: true, timeout: 9000, maximumAge: 60000 });
+}
+function referentiePunt() {
+  if (ikPos && afstandKm(ikPos, middenVan(staat.stad)) < 6) return ikPos;
+  if (kaart && !$('#scherm-kaart').hidden) { const c = kaart.getCenter(); return { lat: c.lat, lng: c.lng }; }
+  return middenVan(staat.stad);
+}
+
+// Posities opzoeken via de adresgegevens van PDOK (overheid, geen persoonsgegevens).
+async function zoekPositie(z) {
+  const adres = z.adres.replace(/(\d+)\s*-\s*\d+/, '$1');
+  const q = `${adres} ${z.postcode || ''} ${STEDEN[z.stad].plaats}`.replace(/\s+/g, ' ').trim();
+  const url = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?' + new URLSearchParams({ q, fq: 'type:adres', rows: '1', fl: 'weergavenaam,centroide_ll' });
+  const antwoord = await fetch(url);
+  if (!antwoord.ok) throw new Error('netwerk');
+  const data = await antwoord.json();
+  const doc = data && data.response && data.response.docs && data.response.docs[0];
+  if (!doc || !doc.centroide_ll) return null;
+  const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(doc.centroide_ll);
+  return m ? { lat: parseFloat(m[2]), lng: parseFloat(m[1]) } : null;
+}
+async function zoekAllePosities() {
+  const dag = 864e5;
+  const teDoen = BASIS_ZAKEN.filter(z => !staat.posities[z.id] && !(staat.geoMislukt[z.id] > Date.now() - dag));
+  if (!teDoen.length) return;
+  let i = 0, gevonden = 0;
+  async function werker() {
+    while (i < teDoen.length) {
+      const z = teDoen[i++];
+      try {
+        const r = await zoekPositie(z);
+        if (r && afstandKm(r, middenVan(z.stad)) < 3) {
+          staat.posities[z.id] = { lat: r.lat, lng: r.lng, bron: 'adres' };
+          gevonden++;
+          if (markers[z.id]) markers[z.id].setLatLng([r.lat, r.lng]);
+        } else {
+          staat.geoMislukt[z.id] = Date.now();
+        }
+      } catch (e) { /* geen internet: later opnieuw proberen */ }
+    }
+  }
+  await Promise.all([werker(), werker(), werker(), werker()]);
+  if (gevonden) {
+    bewaar();
+    if (!gebruikerBewoog && !sleepId && !geselecteerd) passendInBeeld();
+    ontwar(); vulBlad();
+    if (!$('#scherm-lijst').hidden) renderLijst();
+  }
+}
+
+// ================= Navigatie =================
+let actieveTab = 'kaart';
+function wisselTab(naam) {
+  actieveTab = naam;
+  for (const t of ['kaart', 'lijst', 'route', 'melden']) $('#scherm-' + t).hidden = (t !== naam);
+  $$('.tab').forEach(b => { if (b.dataset.tab === naam) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  if (naam === 'kaart' && kaart) { setTimeout(() => { kaart.invalidateSize(); ontwar(); vulBlad(); }, 30); }
+  if (naam === 'lijst') renderLijst();
+  if (naam === 'route') renderRoute();
+  if (naam === 'melden') renderMelden();
+}
+// Lagen (sfeerkaart, invullen) werken met de terugknop van de telefoon.
+let lagen = [], negeerPop = 0;
+function toonLaag(naam) {
+  const el = $('#laag-' + naam);
+  el.hidden = false; el.scrollTop = 0;
+  lagen.push(naam);
+  history.pushState({ laag: naam }, '');
+  const eerste = el.querySelector('button, a, input'); if (eerste) eerste.focus({ preventScroll: true });
+}
+function verbergLaag(naam) {
+  $('#laag-' + naam).hidden = true;
+  if (naam === 'zaak') { geselecteerd = null; verversPins(); }
+}
+function sluitLaag() { if (lagen.length) history.back(); }
+function sluitAlleLagen() {
+  const n = lagen.length;
+  lagen.slice().forEach(verbergLaag);
+  lagen = [];
+  if (n) { negeerPop = 1; history.go(-n); }
+}
+window.addEventListener('popstate', () => {
+  if (negeerPop) { negeerPop = 0; return; }
+  const naam = lagen.pop();
+  if (naam) verbergLaag(naam);
+});
+
+// ================= Weergave: kaart, blad, lijst =================
+function renderChips() {
+  for (const doel of $$('[data-chips]')) {
+    doel.innerHTML = FILTERS.map(([k, l]) => `<button type="button" class="chip" data-filter="${k}" aria-pressed="${staat.filter === k}">${l}</button>`).join('');
+  }
+}
+function kaartjeHtml(z, km) {
+  const st = huidigeStatus(z.id), i = invul(z.id);
+  return `<button class="zkaart" type="button" data-zaak="${z.id}">
+    <span class="initiaal ${statusKlasse(st)}" aria-hidden="true">${esc(initiaal(z.naam))}</span>
+    <span class="zk-tekst"><span class="zk-naam">${esc(z.naam)}</span><span class="zk-sub">${esc(i.soort || z.adres)}</span>
+    <span class="zk-status ${st ? 't' + st.niveau : ''}">${st ? NIVEAUS[st.niveau] + ' · ' : ''}${loopMinuten(km)} min lopen</span></span></button>`;
+}
+function legeFilterTekst() {
+  if (staat.filter === 'nu') return 'Op dit moment meldt geen enkele zaak zijn drukte. Meld als zaak via de tab Zaak meldt, of speel de voorbeeldavond af in het menu.';
+  const label = FILTERS.find(f => f[0] === staat.filter)[1].toLowerCase();
+  return `Nog geen zaak is ingevuld als geschikt voor ${label}. Open een zaak en tik op Sfeerkaart invullen.`;
+}
+function vulBlad() {
+  const alle = zakenInStad();
+  $('#stadnaam').textContent = staat.stad;
+  $('#zoek-placeholder').textContent = 'Zoek in ' + staat.stad;
+  const live = alle.filter(z => huidigeStatus(z.id)).length;
+  const ingevuld = alle.filter(z => isIngevuld(z.id)).length;
+  $('#bladsub').textContent = staat.demo.aan
+    ? `Voorbeeldavond om ${klokMin(staat.demo.minuten)} · de drukte is gesimuleerd`
+    : `${live} live gemeld · ${ingevuld} van ${alle.length} sfeerkaarten ingevuld`;
+  const ref = referentiePunt();
+  const lijst = alle.filter(voldoetFilter).map(z => ({ z, km: afstandKm(ref, positie(z)) })).sort((a, b) => a.km - b.km).slice(0, 12);
+  $('#bladkaarten').innerHTML = lijst.length ? lijst.map(x => kaartjeHtml(x.z, x.km)).join('') : `<p class="leeg">${esc(legeFilterTekst())}</p>`;
+}
+function rijHtml(z, km) {
+  const st = huidigeStatus(z.id), i = invul(z.id);
+  return `<button class="zrij" type="button" data-zaak="${z.id}">
+    <span class="initiaal ${statusKlasse(st)}" aria-hidden="true">${esc(initiaal(z.naam))}</span>
+    <span class="zk-tekst"><span class="zk-naam">${esc(z.naam)}</span><span class="zk-sub">${esc(i.soort ? i.soort + ' · ' + z.adres : z.adres)}</span></span>
+    <span class="rechts"><span class="statuspil ${statusKlasse(st)}">${st ? NIVEAUS[st.niveau] : (isIngevuld(z.id) ? 'Ingevuld' : 'Nog leeg')}</span>
+    <span class="klein-grijs">${loopMinuten(km)} min lopen</span></span></button>`;
+}
+function renderLijst() {
+  $('#lijst-oogje').textContent = staat.stad;
+  const ref = referentiePunt();
+  const lijst = zakenInStad().filter(voldoetFilter).filter(voldoetZoek)
+    .map(z => ({ z, km: afstandKm(ref, positie(z)) })).sort((a, b) => a.km - b.km);
+  const groepen = [
+    ['Nu live', lijst.filter(x => huidigeStatus(x.z.id))],
+    ['Sfeerkaart ingevuld', lijst.filter(x => !huidigeStatus(x.z.id) && isIngevuld(x.z.id))],
+    ['Nog in te vullen', lijst.filter(x => !huidigeStatus(x.z.id) && !isIngevuld(x.z.id))]
+  ].filter(g => g[1].length);
+  $('#lijst-inhoud').innerHTML = groepen.length
+    ? groepen.map(([titel, rijen]) => `<div class="lijstgroep"><h2>${titel} · ${rijen.length}</h2>${rijen.map(x => rijHtml(x.z, x.km)).join('')}</div>`).join('')
+    : `<div class="lege-staat">${esc(staat.zoek ? 'Geen zaak gevonden met deze naam of straat.' : legeFilterTekst())}</div>`;
+}
+function verversAlles() {
+  verversPins();
+  vulBlad();
+  if (actieveTab === 'lijst') renderLijst();
+  if (actieveTab === 'melden') renderMeldKop();
+  if (!$('#laag-zaak').hidden && geselecteerd) renderZaak(geselecteerd);
+  $('#demobalk').hidden = !staat.demo.aan;
+  $('#demo-tijd').textContent = klokMin(staat.demo.minuten);
+  $('#demo-schuif').value = staat.demo.minuten;
+}
+
+// ================= Sfeerkaart van een zaak =================
+function openZaak(id) {
+  geselecteerd = id;
+  renderZaak(id);
+  toonLaag('zaak');
+  verversPins();
+}
+function renderZaak(id) {
+  const z = ZAKEN[id], i = invul(id), st = huidigeStatus(id), p = positie(z);
+  const publiek = [(i.publiek || []).join(', '), i.publiekTekst].filter(Boolean).join(' · ');
+  const vakken = [['Muziek', i.muziek], ['Publiek', publiek ? 'Vooral ' + publiek : ''], ['Kun je praten?', i.praten], ['Prijs', i.prijs], ['Drukste moment', i.drukte], ['Huisregels', i.huisregels]];
+  let status;
+  if (st && st.demo) {
+    status = `<div class="status-rij"><span class="statuspil s${st.niveau}">${NIVEAUS[st.niveau]}</span><span class="status-meta">Voorbeeldavond, ${klokMin(staat.demo.minuten)} · gesimuleerd</span></div>
+      <span class="betrouw onbekend">In de voorbeeldavond tellen bevestigingen niet mee.</span>`;
+  } else if (st) {
+    const gestemd = staat.stemmen[id] === st.tijd;
+    status = `<div class="status-rij"><span class="statuspil s${st.niveau}">${NIVEAUS[st.niveau]}</span><span class="status-meta">gemeld door de zaak, ${st.minuten < 1 ? 'zojuist' : st.minuten + ' min geleden'} · tot ${klok(st.tijd + GELDIG_MINUTEN * 60000)}</span></div>
+      ${betrouwHtml(id)}
+      ${st.actie && st.niveau === 1 ? `<div class="actie"><strong>Nu-actie:</strong> ${esc(st.actie)}</div>` : ''}
+      <div class="knoppenrij"><button type="button" class="knop vol goed" data-actie="klopt" ${gestemd ? 'disabled' : ''}>Klopt</button><button type="button" class="knop vol" data-actie="klopt-niet" ${gestemd ? 'disabled' : ''}>Klopt niet meer</button></div>
+      ${gestemd ? '<span class="klein-grijs">Je hebt deze melding beoordeeld. Bedankt.</span>' : ''}`;
+  } else {
+    status = `<div class="status-rij"><span class="statuspil">Geen live info</span><span class="status-meta">Deze zaak meldt nu niets.</span></div>
+      ${betrouwbaarheid(id).n ? betrouwHtml(id) : ''}
+      <div><button type="button" class="knop link" data-actie="meld-als-zaak">Laat zien hoe deze zaak meldt</button></div>`;
+  }
+  const meta = [i.soort, i.open].filter(Boolean).join(' · ');
+  const badges = [];
+  if (!isIngevuld(id)) badges.push('<span class="badge">Sfeerkaart nog leeg</span>');
+  if (!z.zeker) badges.push('<span class="badge let-op">Adres nog controleren</span>');
+  if (p.bron === 'schatting') badges.push('<span class="badge let-op">Positie bij benadering</span>');
+  const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(6)},${p.lng.toFixed(6)}&travelmode=walking`;
+  $('#laag-zaak').innerHTML = `<div class="laagbinnen">
+    <div class="laagkop">
+      <button type="button" class="rondknop klein" data-actie="terug" aria-label="Terug"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <span class="titel"></span>
+      <button type="button" class="rondknop klein" data-actie="deel-zaak" aria-label="Deel deze zaak"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
+    </div>
+    <div class="inhoud">
+      <div class="zaakkop ${statusKlasse(st)}">
+        <span class="watermerk" aria-hidden="true">${esc(initiaal(z.naam))}</span>
+        <div class="relatief">
+          <span class="oogje">${esc(z.stad)} · ${esc(z.adres)}</span>
+          <h1>${esc(z.naam)}</h1>
+          ${meta ? `<div class="meta">${esc(meta)}</div>` : ''}
+          ${badges.length ? `<div class="badges">${badges.join('')}</div>` : ''}
+        </div>
+      </div>
+      <div class="blok statusblok">${status}</div>
+      <div class="sectiekop"><h2>Sfeerkaart</h2><button type="button" class="knop link" data-actie="bewerk">${isIngevuld(id) ? 'Bewerken' : 'Invullen'}</button></div>
+      <div class="vakken">${vakken.map(([label, waarde]) => `<div class="vak"><span class="vk-label">${label}</span><span class="vk-waarde ${waarde ? '' : 'leeg'}">${waarde ? esc(waarde) : 'Nog niet ingevuld'}</span></div>`).join('')}</div>
+      ${i.beste ? `<div class="tip"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"/></svg><div><strong>Beste moment:</strong> ${esc(i.beste)}</div></div>` : ''}
+      <div class="info">
+        <a href="${routeUrl}" target="_blank" rel="noopener"><span>Lopend ernaartoe</span><span>${esc(z.adres)}${z.postcode ? ', ' + esc(z.postcode) : ''}</span></a>
+        ${z.website ? `<a href="${esc(z.website)}" target="_blank" rel="noopener"><span>Website</span><span>${esc(z.website.replace(/^https?:\/\/(www\.)?/, ''))}</span></a>` : ''}
+        <div class="info-rij"><span>Positie op de kaart</span><span>${p.bron === 'adres' ? 'Uit het adres' : p.bron === 'hand' ? 'Zelf geplaatst' : 'Bij benadering'}</span></div>
+      </div>
+      <div class="ruimte"></div>
+    </div>
+    <div class="onderbalk">
+      <button type="button" class="knop vol" data-actie="bewerk">${isIngevuld(id) ? 'Bewerken' : 'Invullen'}</button>
+      <button type="button" class="knop vol hoofd" data-actie="in-route">Zet in mijn route</button>
+    </div>
+  </div>`;
+  $('#laag-zaak').dataset.id = id;
+}
+function stem(id, klopt) {
+  const st = huidigeStatus(id);
+  if (!st || st.demo) return;
+  if (staat.stemmen[id] === st.tijd) { toast('Je hebt deze melding al beoordeeld.'); return; }
+  const k = staat.klopt[id] || { ja: 0, nee: 0 };
+  if (klopt) k.ja++; else k.nee++;
+  staat.klopt[id] = k; staat.stemmen[id] = st.tijd;
+  bewaar(); renderZaak(id);
+  toast(klopt ? 'Bedankt. Dit telt mee voor de betrouwbaarheid van deze zaak.' : 'Bedankt. Zaken waarvan meldingen vaak niet kloppen, raken hun live-label kwijt.');
+}
+async function deel(tekst) {
+  if (navigator.share) {
+    try { await navigator.share({ text: tekst }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  window.open('https://wa.me/?text=' + encodeURIComponent(tekst), '_blank', 'noopener');
+}
+function deelZaak(id) {
+  const z = ZAKEN[id], st = huidigeStatus(id), i = invul(id);
+  const regels = [`${z.naam}, ${z.adres}, ${z.stad}`];
+  if (i.soort) regels.push(i.soort);
+  if (st && !st.demo) regels.push(`Nu: ${NIVEAUS[st.niveau].toLowerCase()} (gemeld ${st.minuten < 1 ? 'zojuist' : st.minuten + ' min geleden'})`);
+  regels.push('Via Vanavond (demo)');
+  deel(regels.join('\n'));
+}
+
+// ================= Sfeerkaart invullen =================
+function openBewerk(id) { renderBewerk(id); toonLaag('bewerk'); }
+function renderBewerk(id) {
+  const z = ZAKEN[id], i = invul(id), p = positie(z);
+  const tags = i.tags || [], publiek = i.publiek || [];
+  $('#laag-bewerk').innerHTML = `<div class="laagbinnen">
+    <div class="laagkop">
+      <button type="button" class="rondknop klein" data-actie="terug" aria-label="Sluiten zonder bewaren"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <span class="titel">Sfeerkaart invullen</span>
+    </div>
+    <form class="inhoud" id="bewerk-form" data-id="${id}" autocomplete="off">
+      <div class="schermkop"><span class="oogje">${esc(z.adres)}</span><h1>${esc(z.naam)}</h1><p>Vul in wat je weet. Lege vakjes blijven leeg op de sfeerkaart. Wat je invult, staat alleen op dit toestel.</p></div>
+      <div class="veld"><span class="label" id="lbl-tags">Geschikt voor</span>
+        <div class="keuzes" role="group" aria-labelledby="lbl-tags">${SOORTEN_AVOND.map(([k, l]) => `<button type="button" class="keuze" data-wissel="tags" data-waarde="${k}" aria-pressed="${tags.includes(k)}">${l}</button>`).join('')}</div></div>
+      <p class="toelichting">Hiermee werken de filters en de avondroute.</p>
+      <div class="veld"><span class="label" id="lbl-publiek">Publiek, vooral</span>
+        <div class="keuzes" role="group" aria-labelledby="lbl-publiek">${LEEFTIJDEN.map(l => `<button type="button" class="keuze" data-wissel="publiek" data-waarde="${l}" aria-pressed="${publiek.includes(l)}">${l}</button>`).join('')}</div></div>
+      <div class="veld"><label for="v-publiekTekst">Publiek, toelichting</label><input type="text" id="v-publiekTekst" value="${esc(i.publiekTekst || '')}" placeholder="Gemengd, veel studenten, werkenden na 18:00"></div>
+      ${VELDEN.map(v => `<div class="veld"><label for="v-${v.k}">${v.label}</label>${v.groot
+        ? `<textarea id="v-${v.k}" placeholder="${esc(v.voorbeeld)}">${esc(i[v.k] || '')}</textarea>`
+        : `<input type="text" id="v-${v.k}" value="${esc(i[v.k] || '')}" placeholder="${esc(v.voorbeeld)}">`}</div>`).join('')}
+      <div class="veld"><span class="label">Positie op de kaart</span>
+        <p class="toelichting" style="margin:0">${p.bron === 'adres' ? 'Komt uit het adres.' : p.bron === 'hand' ? 'Door jou geplaatst.' : 'Bij benadering. Het adres is nog niet gevonden.'}</p>
+        <div><button type="button" class="knop" data-actie="positie">Plaats op de kaart aanpassen</button></div></div>
+      <div class="ruimte"></div>
+    </form>
+    <div class="onderbalk">
+      <button type="button" class="knop vol" data-actie="terug">Annuleren</button>
+      <button type="button" class="knop vol hoofd" data-actie="bewaar-sfeer">Bewaar</button>
+    </div>
+  </div>`;
+}
+function bewaarSfeer() {
+  const form = $('#bewerk-form'); if (!form) return;
+  const id = form.dataset.id;
+  const gekozen = soort => $$(`[data-wissel="${soort}"][aria-pressed="true"]`, form).map(b => b.dataset.waarde);
+  const nieuw = { tags: gekozen('tags'), publiek: gekozen('publiek'), publiekTekst: $('#v-publiekTekst').value.trim() };
+  for (const v of VELDEN) nieuw[v.k] = $('#v-' + v.k).value.trim();
+  staat.invul[id] = nieuw;
+  bewaar();
+  renderZaak(id);
+  sluitLaag();
+  verversAlles();
+  toast('Sfeerkaart bewaard op dit toestel');
+}
+function startSleep(id) {
+  if (!kaart) { toast('De kaart is niet geladen, dus verplaatsen lukt nu niet.'); return; }
+  sluitAlleLagen();
+  wisselTab('kaart');
+  sleepId = id; geselecteerd = null;
+  const m = markers[id];
+  m.setIcon(pinIcoon(ZAKEN[id]));
+  m.dragging.enable();
+  kaart.setView(m.getLatLng(), 18);
+  $('#sleep-tekst').textContent = `Sleep ${ZAKEN[id].naam} naar de juiste plek`;
+  $('#sleepbalk').hidden = false;
+}
+function stopSleep() {
+  if (!sleepId) return;
+  const id = sleepId, m = markers[id], ll = m.getLatLng();
+  staat.posities[id] = { lat: ll.lat, lng: ll.lng, bron: 'hand' };
+  bewaar();
+  m.dragging.disable();
+  sleepId = null;
+  $('#sleepbalk').hidden = true;
+  m.setIcon(pinIcoon(ZAKEN[id]));
+  ontwar(); vulBlad();
+  toast('Positie bewaard');
+}
+
+// ================= Avondroute =================
+function standaardOpties() { return { stad: staat.stad, aantal: 6, leeftijd: '25-35', wens: 'praten-dansen', start: 20 * 60 }; }
+function maakRoute(opties, variatie, vast) {
+  const etappes = WENSEN[opties.wens].etappes;
+  const kandidaten = zakenInStad(opties.stad);
+  let vastIndex = -1;
+  if (vast && ZAKEN[vast] && ZAKEN[vast].stad === opties.stad) {
+    const tags = invul(vast).tags || [];
+    vastIndex = etappes.findIndex(e => tags.includes(e[0]));
+    if (vastIndex < 0) vastIndex = 0;
+  }
+  const gekozen = [];
+  let vorige = null, opAfstand = 0;
+  etappes.forEach(([tag, titel], index) => {
+    let beste = null, besteScore = -Infinity;
+    if (index === vastIndex) beste = ZAKEN[vast];
+    else {
+      for (const z of kandidaten) {
+        if (gekozen.some(g => g.id === z.id) || (vastIndex > index && z.id === vast)) continue;
+        const i = invul(z.id), tags = i.tags || [];
+        let score = 0;
+        if (tags.includes(tag)) score += 5;
+        else if (tag === 'borrel' && tags.includes('praten')) score += 2;
+        else if (tag === 'praten' && tags.includes('borrel')) score += 1.5;
+        if ((i.publiek || []).includes(opties.leeftijd)) score += 2.5;
+        if (isIngevuld(z.id)) score += 1;
+        if (vorige) score -= afstandKm(positie(vorige), positie(z)) * 4;
+        score += (hash(z.id + ':' + variatie + ':' + index) % 100) / 100 * 1.8;
+        if (score > besteScore) { besteScore = score; beste = z; }
+      }
+    }
+    if (!beste) return;
+    if (!(invul(beste.id).tags || []).includes(tag)) opAfstand++;
+    gekozen.push({ id: beste.id, titel, tijd: opties.start + index * 120 });
+    vorige = beste;
+  });
+  return { stops: gekozen, opAfstand };
+}
+function renderRoute() {
+  const r = staat.route;
+  const opties = Object.assign(standaardOpties(), r ? r.opties : {});
+  const heeftRoute = !!(r && r.stops && r.stops.length);
+  $('#route-resultaat').hidden = !heeftRoute;
+  if (heeftRoute) renderRouteResultaat();
+  const startOpties = [];
+  for (let m = 17 * 60; m <= 23 * 60; m += 30) startOpties.push(m);
+  const form = `
+    <div class="veld"><span class="label" id="lbl-rstad">Stad</span><div class="segment" role="group" aria-labelledby="lbl-rstad">${Object.keys(STEDEN).map(s => `<button type="button" data-ropt="stad" data-waarde="${s}" aria-pressed="${opties.stad === s}">${s}</button>`).join('')}</div></div>
+    <div class="veld"><span class="label">Met hoeveel zijn jullie?</span><div class="stapper"><button type="button" data-actie="aantal-min" aria-label="Minder">−</button><output id="r-aantal" aria-live="polite">${opties.aantal}</output><button type="button" data-actie="aantal-plus" aria-label="Meer">+</button></div></div>
+    <div class="veld"><span class="label" id="lbl-rleeftijd">Leeftijd, ongeveer</span><div class="keuzes" role="group" aria-labelledby="lbl-rleeftijd">${LEEFTIJDEN.map(l => `<button type="button" class="keuze" data-ropt="leeftijd" data-waarde="${l}" aria-pressed="${opties.leeftijd === l}">${l}</button>`).join('')}</div></div>
+    <div class="veld"><span class="label" id="lbl-rwens">Wat willen jullie?</span><div class="opties" role="group" aria-labelledby="lbl-rwens">${Object.entries(WENSEN).map(([k, w]) => `<button type="button" class="optie" data-ropt="wens" data-waarde="${k}" aria-pressed="${opties.wens === k}"><span class="bolletje" aria-hidden="true"></span>${w.label}</button>`).join('')}</div></div>
+    <div class="veld"><label for="r-start">Begintijd</label><select id="r-start">${startOpties.map(m => `<option value="${m}" ${m === opties.start ? 'selected' : ''}>${klokMin(m)}</option>`).join('')}</select></div>
+    <button type="button" class="knop hoofd" style="width:100%" data-actie="maak-route">${heeftRoute ? 'Maak een nieuwe route' : 'Maak een route'}</button>`;
+  $('#route-form').innerHTML = heeftRoute
+    ? `<details class="wensen"><summary>Wensen aanpassen <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>${form}</details>`
+    : form;
+  $('#route-form').dataset.opties = JSON.stringify(opties);
+}
+function leesRouteOpties() {
+  const opties = JSON.parse($('#route-form').dataset.opties || '{}');
+  const kies = naam => { const b = $(`[data-ropt="${naam}"][aria-pressed="true"]`, $('#route-form')); return b ? b.dataset.waarde : opties[naam]; };
+  return { stad: kies('stad'), aantal: parseInt($('#r-aantal').textContent, 10) || 6, leeftijd: kies('leeftijd'), wens: kies('wens'), start: parseInt($('#r-start').value, 10) };
+}
+function genereerRoute(nieuweVariatie) {
+  const opties = leesRouteOpties();
+  const vorig = staat.route || {};
+  const variatie = nieuweVariatie ? (vorig.variatie || 0) + 1 : (vorig.variatie || 0);
+  const uitkomst = maakRoute(opties, variatie, vorig.vast || null);
+  staat.route = { opties, variatie, vast: vorig.vast || null, stops: uitkomst.stops, opAfstand: uitkomst.opAfstand };
+  bewaar();
+  renderRoute();
+  $('#route-scroll').scrollTo({ top: 0, behavior: 'smooth' });
+}
+function renderRouteResultaat() {
+  const r = staat.route, o = r.opties;
+  const stops = r.stops.filter(s => ZAKEN[s.id]);
+  let html = `<div class="routekop"><h2>Jullie avond in <em>${esc(o.stad)}</em></h2>
+    <div class="labels"><span class="badge">${o.aantal} personen</span><span class="badge">${esc(o.leeftijd)}</span><span class="badge">${esc(WENSEN[o.wens].label.toLowerCase())}</span></div></div>`;
+  const opAfstand = r.opAfstand === true ? stops.length : (r.opAfstand || 0);
+  if (opAfstand) html += `<div class="waarschuwing">${opAfstand === stops.length ? 'Deze route is gekozen' : `${opAfstand} van de ${stops.length} zaken zijn gekozen`} op loopafstand, omdat ${opAfstand === 1 ? 'die sfeerkaart' : 'die sfeerkaarten'} nog niet ${opAfstand === 1 ? 'is' : 'zijn'} ingevuld. Hoe meer je invult, hoe beter de route past.</div>`;
+  html += '<div class="tijdlijn">';
+  stops.forEach((s, n) => {
+    const z = ZAKEN[s.id], i = invul(s.id), st = huidigeStatus(s.id);
+    const sub = [i.soort, (i.publiek || []).length ? 'publiek ' + i.publiek.join(', ') : '', i.praten ? 'praten: ' + i.praten : ''].filter(Boolean).join(' · ') || z.adres;
+    html += `<button type="button" class="stop" data-zaak="${z.id}"><span class="tl"><b>${klokMin(s.tijd)}</b><i></i></span>
+      <span class="st-body"><span class="initiaal ${statusKlasse(st)}" aria-hidden="true">${esc(initiaal(z.naam))}</span>
+      <span class="st-tekst"><span class="st-etappe">${esc(s.titel)}</span><span class="st-naam">${esc(z.naam)}</span><span class="st-sub">${esc(sub)}</span>
+      ${st ? `<span class="zk-status t${st.niveau}">${esc(statusTekst(st))}</span>` : ''}</span></span></button>`;
+    if (n < stops.length - 1) {
+      const km = afstandKm(positie(z), positie(ZAKEN[stops[n + 1].id]));
+      html += `<div class="lopen"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="13" cy="4" r="2"/><path d="M9 21l2-6 3 3v3M7 12l3-3 3 1 2 3 3 1"/></svg>${loopMinuten(km)} min lopen</div>`;
+    }
+  });
+  html += `</div><div class="knoppenrij" style="margin-top:6px"><button type="button" class="knop vol hoofd" data-actie="deel-route">Deel in WhatsApp</button><button type="button" class="knop vol" data-actie="andere-route">Andere route</button></div>`;
+  if (r.vast && ZAKEN[r.vast]) html += `<p class="toelichting" style="margin-top:10px">${esc(ZAKEN[r.vast].naam)} staat vast in je route. <button type="button" class="knop link" data-actie="los-vast">Losmaken</button></p>`;
+  $('#route-lijst').innerHTML = html;
+  tekenRouteKaart(stops);
+}
+function tekenRouteKaart(stops) {
+  if (!window.L) return;
+  if (!routeKaart) {
+    routeKaart = L.map('routekaart', { zoomControl: false, attributionControl: true, scrollWheelZoom: false });
+    routeKaart.attributionControl.setPrefix(false);
+    zetTegels();
+  }
+  if (routeLaag) routeKaart.removeLayer(routeLaag);
+  routeLaag = L.layerGroup().addTo(routeKaart);
+  const punten = stops.map(s => { const p = positie(ZAKEN[s.id]); return [p.lat, p.lng]; });
+  if (!punten.length) return;
+  L.polyline(punten, { color: getComputedStyle(document.documentElement).getPropertyValue('--knop').trim() || '#1C1612', weight: 3, dashArray: '6 8', lineCap: 'round' }).addTo(routeLaag);
+  punten.forEach((pt, n) => L.marker(pt, { icon: L.divIcon({ className: 'pin-anker', iconSize: [0, 0], iconAnchor: [0, 0], html: `<div class="rnr">${n + 1}</div>` }), keyboard: false }).addTo(routeLaag));
+  setTimeout(() => { routeKaart.invalidateSize(); routeKaart.fitBounds(L.latLngBounds(punten), { padding: [36, 36], maxZoom: 17 }); }, 40);
+}
+function deelRoute() {
+  const r = staat.route; if (!r) return;
+  const regels = [`Onze avond in ${r.opties.stad}`];
+  r.stops.forEach(s => { const z = ZAKEN[s.id]; if (z) regels.push(`${klokMin(s.tijd)} · ${z.naam}, ${z.adres}`); });
+  regels.push('', 'Gemaakt met Vanavond (demo)');
+  deel(regels.join('\n'));
+}
+
+// ================= Zaak meldt =================
+function meldZaakId() {
+  const ids = zakenInStad().map(z => z.id);
+  if (!staat.meldZaak || !ids.includes(staat.meldZaak)) staat.meldZaak = ids[0];
+  return staat.meldZaak;
+}
+function voegBerichtToe(id, van, tekst) {
+  const lijst = staat.berichten[id] || (staat.berichten[id] = []);
+  lijst.push({ van, tekst, tijd: Date.now() });
+  if (lijst.length > 40) lijst.splice(0, lijst.length - 40);
+}
+function renderMeldKop() {
+  const id = meldZaakId(), s = staat.status[id];
+  const live = s && (Date.now() - s.tijd) / 60000 <= GELDIG_MINUTEN;
+  const b = betrouwbaarheid(id);
+  $('#meld-sub').textContent = (live ? `Live: ${NIVEAUS[s.niveau].toLowerCase()}, tot ${klok(s.tijd + GELDIG_MINUTEN * 60000)}` : 'Geen actieve melding')
+    + (b.n >= 3 ? ` · ${b.pct}% betrouwbaar` : '');
+}
+function renderMelden() {
+  const id = meldZaakId();
+  $('#meld-zaak').innerHTML = zakenInStad().map(z => `<option value="${z.id}" ${z.id === id ? 'selected' : ''}>${esc(z.naam)}</option>`).join('');
+  if (!(staat.berichten[id] || []).length) {
+    voegBerichtToe(id, 'bot', `Hoe is het nu bij ${ZAKEN[id].naam}? Stuur een cijfer:\n1 rustig · 2 gezellig · 3 druk · 4 vol`);
+    bewaar();
+  }
+  renderMeldKop();
+  let vorigeDag = '';
+  $('#gesprek').innerHTML = staat.berichten[id].map(m => {
+    const d = new Date(m.tijd), dag = d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    const marker = dag !== vorigeDag ? `<div class="tijdmarker">${esc(dag)}</div>` : '';
+    vorigeDag = dag;
+    return `${marker}<div class="bericht ${m.van}">${esc(m.tekst)}<span class="tijd">${klok(m.tijd)}</span></div>`;
+  }).join('');
+  const scroll = $('#meld-scroll'); scroll.scrollTop = scroll.scrollHeight;
+}
+function verwerkMelding(tekst) {
+  tekst = (tekst || '').trim(); if (!tekst) return;
+  const id = meldZaakId(), naam = ZAKEN[id].naam;
+  voegBerichtToe(id, 'zaak', tekst);
+  const vorige = staat.status[id];
+  const vorigeLive = vorige && (Date.now() - vorige.tijd) / 60000 <= GELDIG_MINUTEN;
+  if (/^[1-4]$/.test(tekst)) {
+    const niveau = parseInt(tekst, 10);
+    const tijd = Date.now();
+    staat.status[id] = { niveau, tijd, actie: '' };
+    const tot = klok(tijd + GELDIG_MINUTEN * 60000);
+    if (niveau === 1) {
+      voegBerichtToe(id, 'bot', `Rustig gemeld, bedankt. Wil je een nu-actie plaatsen? Die zien gasten alleen als je rustig meldt. Typ bijvoorbeeld: tot 22:00 tweede rondje half geld.\n\nJe melding loopt tot ${tot}.`);
+    } else {
+      const gestopt = vorigeLive && vorige.actie ? 'De nu-actie is gestopt. ' : '';
+      voegBerichtToe(id, 'bot', `${NIVEAUS[niveau]} gemeld. ${gestopt}Je melding loopt tot ${tot}. Stuur een nieuw cijfer als het verandert.`);
+    }
+    if (staat.demo.aan) { staat.demo.aan = false; toast('Voorbeeldavond uitgezet, zodat je de echte melding op de kaart ziet'); pasThemaToe(); }
+  } else if (vorigeLive && vorige.niveau === 1) {
+    vorige.actie = tekst.slice(0, 90);
+    voegBerichtToe(id, 'bot', `Staat erop: “${vorige.actie}”. Gasten zien de actie tot ${klok(vorige.tijd + GELDIG_MINUTEN * 60000)}, of tot je een ander cijfer stuurt.`);
+  } else {
+    voegBerichtToe(id, 'bot', `Een nu-actie kan alleen als je rustig meldt. Stuur eerst 1, of stuur 2, 3 of 4 als het drukker is bij ${naam}.`);
+  }
+  bewaar();
+  renderMelden();
+  verversAlles();
+}
+
+// ================= Menu =================
+function openMenu() {
+  $('#menu-stad').innerHTML = Object.keys(STEDEN).map(s => `<button type="button" data-stad="${s}" aria-pressed="${staat.stad === s}">${s}</button>`).join('');
+  $('#menu-thema').innerHTML = [['auto', 'Automatisch'], ['dag', 'Dag'], ['nacht', 'Nacht']].map(([k, l]) => `<button type="button" data-thema="${k}" aria-pressed="${staat.thema === k}">${l}</button>`).join('');
+  $('#menu-demo').setAttribute('aria-checked', String(staat.demo.aan));
+  const alle = BASIS_ZAKEN.length, ingevuld = BASIS_ZAKEN.filter(z => isIngevuld(z.id)).length;
+  $('#menu-voortgang').textContent = `${ingevuld} van ${alle} sfeerkaarten ingevuld (Den Haag en Breda samen).`;
+  $('#menu-wis').textContent = 'Wis alles';
+  $('#laag-menu').hidden = false;
+  $('#menu-sluit').focus({ preventScroll: true });
+}
+function sluitMenu() { $('#laag-menu').hidden = true; }
+function kiesStad(stad) {
+  if (!STEDEN[stad] || stad === staat.stad) return;
+  staat.stad = stad; bewaar();
+  geselecteerd = null; gebruikerBewoog = false;
+  tekenMarkers(); passendInBeeld();
+  pasThemaToe(); verversAlles();
+  if (actieveTab === 'melden') renderMelden();
+}
+function zetDemo(aan) {
+  staat.demo.aan = aan; bewaar();
+  if (aan && actieveTab !== 'kaart') wisselTab('kaart');
+  pasThemaToe(); verversAlles();
+}
+function exporteer() {
+  const data = { app: 'Vanavond demo', versie: 1, gemaakt: new Date().toISOString(), invul: staat.invul, posities: staat.posities, klopt: staat.klopt };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'vanavond-gegevens.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  toast('Bestand bewaard: vanavond-gegevens.json');
+}
+function importeer(bestand) {
+  const lezer = new FileReader();
+  lezer.onload = () => {
+    try {
+      const d = JSON.parse(lezer.result);
+      if (!d || typeof d.invul !== 'object') throw new Error('vorm');
+      const bekend = obj => Object.fromEntries(Object.entries(obj || {}).filter(([k]) => ZAKEN[k]));
+      Object.assign(staat.invul, bekend(d.invul));
+      Object.assign(staat.posities, bekend(d.posities));
+      Object.assign(staat.klopt, bekend(d.klopt));
+      bewaar(); tekenMarkers(); verversAlles(); openMenu();
+      toast('Gegevens ingeladen');
+    } catch (e) {
+      toast('Dit bestand kan ik niet lezen. Kies een bestand dat je eerder uit Vanavond hebt bewaard.');
+    }
+  };
+  lezer.readAsText(bestand);
+}
+let wisBevestiging = null;
+function wisAlles() {
+  const knop = $('#menu-wis');
+  if (!wisBevestiging) {
+    knop.textContent = 'Tik nog een keer om alles te wissen';
+    wisBevestiging = setTimeout(() => { wisBevestiging = null; knop.textContent = 'Wis alles'; }, 4000);
+    return;
+  }
+  clearTimeout(wisBevestiging); wisBevestiging = null;
+  const stad = staat.stad, thema = staat.thema;
+  staat = standaardStaat(); staat.stad = stad; staat.thema = thema; staat.welkomGezien = true;
+  bewaar(); tekenMarkers(); pasThemaToe(true); verversAlles(); openMenu();
+  toast('Alles gewist');
+}
+
+// ================= Klikken en invoer =================
+document.addEventListener('click', e => {
+  const t = e.target;
+  const tab = t.closest('[data-tab]'); if (tab) { wisselTab(tab.dataset.tab); return; }
+  const filter = t.closest('[data-filter]'); if (filter) { staat.filter = filter.dataset.filter; bewaar(); renderChips(); verversAlles(); return; }
+  const wissel = t.closest('[data-wissel]'); if (wissel) { wissel.setAttribute('aria-pressed', String(wissel.getAttribute('aria-pressed') !== 'true')); return; }
+  const ropt = t.closest('[data-ropt]');
+  if (ropt) { $$(`[data-ropt="${ropt.dataset.ropt}"]`, $('#route-form')).forEach(b => b.setAttribute('aria-pressed', String(b === ropt))); return; }
+  const stadKnop = t.closest('[data-stad]'); if (stadKnop) { kiesStad(stadKnop.dataset.stad); openMenu(); return; }
+  const themaKnop = t.closest('[data-thema]'); if (themaKnop) { staat.thema = themaKnop.dataset.thema; bewaar(); pasThemaToe(true); openMenu(); return; }
+  const meld = t.closest('[data-meld]'); if (meld) { verwerkMelding(meld.dataset.meld); return; }
+  const zaakKnop = t.closest('[data-zaak]'); if (zaakKnop) { openZaak(zaakKnop.dataset.zaak); return; }
+  const actieKnop = t.closest('[data-actie]'); if (!actieKnop) return;
+  const id = $('#laag-zaak').dataset.id;
+  switch (actieKnop.dataset.actie) {
+    case 'terug': sluitLaag(); break;
+    case 'klopt': stem(id, true); break;
+    case 'klopt-niet': stem(id, false); break;
+    case 'deel-zaak': deelZaak(id); break;
+    case 'bewerk': openBewerk(id); break;
+    case 'bewaar-sfeer': bewaarSfeer(); break;
+    case 'positie': startSleep($('#bewerk-form').dataset.id); break;
+    case 'meld-als-zaak': staat.meldZaak = id; bewaar(); sluitAlleLagen(); wisselTab('melden'); break;
+    case 'in-route': {
+      const opties = Object.assign(standaardOpties(), staat.route ? staat.route.opties : {}, { stad: ZAKEN[id].stad });
+      const uitkomst = maakRoute(opties, (staat.route && staat.route.variatie) || 0, id);
+      staat.route = { opties, variatie: (staat.route && staat.route.variatie) || 0, vast: id, stops: uitkomst.stops, opAfstand: uitkomst.opAfstand };
+      bewaar(); sluitAlleLagen(); wisselTab('route');
+      toast(`${ZAKEN[id].naam} staat in je route`);
+      break;
+    }
+    case 'aantal-min': case 'aantal-plus': {
+      const out = $('#r-aantal'); let n = parseInt(out.textContent, 10) || 6;
+      n = Math.min(40, Math.max(1, n + (actieKnop.dataset.actie === 'aantal-plus' ? 1 : -1)));
+      out.textContent = n; break;
+    }
+    case 'maak-route': genereerRoute(false); break;
+    case 'andere-route': if ($('#r-aantal')) genereerRoute(true); break;
+    case 'deel-route': deelRoute(); break;
+    case 'los-vast': if (staat.route) { staat.route.vast = null; bewaar(); genereerRoute(false); } break;
+  }
+});
+$('#naar-zoeken').addEventListener('click', () => { wisselTab('lijst'); setTimeout(() => $('#zoek-invoer').focus(), 60); });
+$('#zoek-invoer').addEventListener('input', e => { staat.zoek = e.target.value; renderLijst(); });
+$('#menu-knop').addEventListener('click', openMenu);
+$('#stad-knop').addEventListener('click', () => kiesStad(staat.stad === 'Den Haag' ? 'Breda' : 'Den Haag'));
+$('#menu-sluit').addEventListener('click', sluitMenu);
+$('#laag-menu').addEventListener('click', e => { if (e.target.id === 'laag-menu') sluitMenu(); });
+$('#menu-demo').addEventListener('click', () => { zetDemo(!staat.demo.aan); $('#menu-demo').setAttribute('aria-checked', String(staat.demo.aan)); if (staat.demo.aan) sluitMenu(); });
+$('#menu-export').addEventListener('click', exporteer);
+$('#menu-import-bestand').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) importeer(f); e.target.value = ''; });
+$('#menu-wis').addEventListener('click', wisAlles);
+$('#ik-knop').addEventListener('click', toonIk);
+$('#passend-knop').addEventListener('click', () => { gebruikerBewoog = false; passendInBeeld(); });
+$('#sleep-klaar').addEventListener('click', stopSleep);
+$('#demo-schuif').addEventListener('input', e => { staat.demo.minuten = parseInt(e.target.value, 10); bewaar(); pasThemaToe(); verversAlles(); });
+$('#demo-stop').addEventListener('click', () => zetDemo(false));
+$('#meld-zaak').addEventListener('change', e => { staat.meldZaak = e.target.value; bewaar(); renderMelden(); });
+$('#meld-form').addEventListener('submit', e => { e.preventDefault(); const inv = $('#meld-invoer'); verwerkMelding(inv.value); inv.value = ''; });
+$('#welkom-demo').addEventListener('click', () => { staat.welkomGezien = true; staat.demo.minuten = 1350; $('#welkom').hidden = true; zetDemo(true); });
+$('#welkom-sluit').addEventListener('click', () => { staat.welkomGezien = true; bewaar(); $('#welkom').hidden = true; });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!$('#laag-menu').hidden) sluitMenu();
+  else if (!$('#welkom').hidden) $('#welkom-sluit').click();
+  else if (lagen.length) sluitLaag();
+});
+
+// ================= Start =================
+function start() {
+  history.replaceState({ laag: null }, '');
+  pasThemaToe(true);
+  renderChips();
+  maakKaart();
+  tekenMarkers();
+  passendInBeeld();
+  $('#zoek-invoer').value = staat.zoek || '';
+  verversAlles();
+  if (!staat.welkomGezien) $('#welkom').hidden = false;
+  zoekAllePosities();
+  setInterval(() => { pasThemaToe(); if (!staat.demo.aan) verversAlles(); }, 30000);
+}
+start();
+</script>
+</body>
+</html>
