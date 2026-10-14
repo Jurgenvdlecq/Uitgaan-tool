@@ -195,6 +195,11 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .initiaal.s2 { background: var(--gezellig); color: var(--op-gezellig); }
 .initiaal.s3 { background: var(--druk); color: var(--op-druk); }
 .initiaal.s4 { background: var(--vol); color: var(--op-vol); }
+.initiaal { position: relative; }
+.initiaal img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.initiaal.s1 { --stip: var(--rustig); } .initiaal.s2 { --stip: var(--gezellig); } .initiaal.s3 { --stip: var(--druk); } .initiaal.s4 { --stip: var(--vol); }
+.initiaal.met-foto::after { content: ""; position: absolute; right: -4px; bottom: -4px; width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--grond); background: var(--stip); }
+.initiaal.met-foto.s0::after { display: none; }
 .zk-tekst { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .zk-naam { font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .zk-sub { font-size: 12px; color: var(--inkt2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -233,6 +238,18 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .laagkop .titel { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inhoud { padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
 
+.zaakfoto { position: relative; height: 240px; margin: 0 0 4px; background: var(--vlak2); overflow: hidden; }
+.zaakfoto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.zaakfoto figcaption { position: absolute; left: 0; right: 0; bottom: 0; color: #FFFFFF; font-size: 11px; line-height: 1.35;
+  padding: 30px max(14px, env(safe-area-inset-right, 0px)) 8px max(14px, env(safe-area-inset-left, 0px));
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.66)); }
+.zaakfoto figcaption a { color: #FFFFFF; font-weight: 700; }
+.zaakkop.met-foto .watermerk { display: none; }
+.fotovak { display: flex; gap: 14px; align-items: center; }
+.fotovoorbeeld { width: 104px; height: 78px; border-radius: 12px; flex-shrink: 0; border: 1px solid var(--lijn2);
+  background-color: var(--vlak2); background-size: cover; background-position: center; display: grid; place-items: center; color: var(--stil); font-size: 11px; text-align: center; }
+.fotovak .fv-tekst { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; color: var(--inkt2); }
+.fotovak .knop { min-height: 40px; padding: 0 12px; font-size: 13.5px; }
 .zaakkop { position: relative; overflow: hidden; padding-top: 6px; padding-bottom: 22px; }
 .zaakkop .watermerk { position: absolute; right: -12px; top: -40px; font-family: var(--f-kop); font-size: 230px; line-height: 1; color: var(--lijn2); pointer-events: none; user-select: none; }
 .zaakkop.s1 .watermerk { color: var(--rustig); opacity: 0.22; }
@@ -548,7 +565,7 @@ details.wensen[open] summary svg { transform: rotate(180deg); }
       </div>
       <div class="menugroep">
         <h3>Over deze demo</h3>
-        <p>De zaken en adressen zijn echt. Sfeer, publiek en drukte zijn alleen te zien als iemand ze heeft ingevuld of gemeld. Kaart © Kadaster / PDOK, met OpenStreetMap als reserve. Posities komen uit de adresgegevens van PDOK.</p>
+        <p>De zaken en adressen zijn echt. Sfeer, publiek en drukte zijn alleen te zien als iemand ze heeft ingevuld of gemeld. Kaart © Kadaster / PDOK, met OpenStreetMap als reserve. Posities komen uit de adresgegevens van PDOK. Foto's komen van Wikimedia Commons, met de maker en de licentie bij elke foto.</p>
         <button type="button" class="knop hoofd" id="menu-sluit">Sluiten</button>
       </div>
     </div>
@@ -630,6 +647,19 @@ const BASIS_ZAKEN = [
 ];
 const ZAKEN = Object.fromEntries(BASIS_ZAKEN.map(z => [z.id, z]));
 
+// Vrij te gebruiken foto's van Wikimedia Commons. Maker en licentie haalt de app zelf op bij Commons.
+// 'soort' zegt wat de foto laat zien: de zaak zelf, het pand, of alleen de straat of het plein eromheen.
+const GROTE_MARKT_DH = { bestanden: ['File:Grote Markt 22-24 - DH (1).JPG'], soort: 'straat', tekst: 'panden aan de Grote Markt' };
+const GROTE_MARKT_BR = { bestanden: ['File:Breda, de toren van de Grote of Onze Lieve Vrouwekerk RM10305 vanaf de Grote Markt foto6 2014-12-28 10.39 (cropped).jpg'], soort: 'straat', tekst: 'de Grote Markt in Breda' };
+const COMMONS_FOTOS = {
+  'dh-paard': { bestanden: ['File:Paard van Troje The Hague 2020.jpg', 'File:Den Haag - Prinsegracht 12.JPG'], soort: 'zaak', tekst: 'Poppodium PAARD aan de Prinsegracht' },
+  'dh-boterwaag': { bestanden: ['File:Boterwaag op de Grote Markt.JPG'], soort: 'pand', tekst: 'De Boterwaag aan de Grote Markt' },
+  'dh-zwarte-ruiter': GROTE_MARKT_DH, 'dh-september': GROTE_MARKT_DH, 'dh-vavoom': GROTE_MARKT_DH, 'dh-zeta': GROTE_MARKT_DH,
+  'dh-de-paas': { bestanden: ['File:Dunne Bierkade Den Haag.jpg'], soort: 'straat', tekst: 'de Dunne Bierkade' },
+  'br-beyerd': { bestanden: ['File:Cafe Restaurant de Beyerd DSCF3018.JPG', 'File:Terras Cafe de Beyerd P1070673.jpg'], soort: 'zaak', tekst: 'Café-restaurant De Beyerd aan de Boschstraat' },
+  'br-vulling': GROTE_MARKT_BR, 'br-kleine-wereld': GROTE_MARKT_BR
+};
+
 const NIVEAUS = { 1: 'Rustig', 2: 'Gezellig', 3: 'Druk', 4: 'Vol' };
 const FILTERS = [['alles', 'Alles'], ['praten', 'Praten'], ['borrel', 'Borrel'], ['dansen', 'Dansen'], ['live', 'Live muziek'], ['nu', 'Nu live']];
 const SOORTEN_AVOND = [['praten', 'Praten'], ['borrel', 'Borrel'], ['dansen', 'Dansen'], ['live', 'Live muziek']];
@@ -654,7 +684,7 @@ const WENSEN = {
 // ================= Opslag =================
 function standaardStaat() {
   return { versie: 1, stad: 'Den Haag', thema: 'auto', filter: 'alles', zoek: '', invul: {}, posities: {}, geoMislukt: {},
-    status: {}, stemmen: {}, klopt: {}, berichten: {}, meldZaak: null, route: null,
+    status: {}, stemmen: {}, klopt: {}, berichten: {}, meldZaak: null, route: null, commons: {},
     demo: { aan: false, minuten: 1350 }, welkomGezien: false };
 }
 function laad() {
@@ -714,6 +744,112 @@ function voldoetZoek(z) {
   const q = (staat.zoek || '').trim().toLowerCase();
   if (!q) return true;
   return (z.naam + ' ' + z.adres + ' ' + (invul(z.id).soort || '')).toLowerCase().includes(q);
+}
+
+// ================= Foto's =================
+// Volgorde: eigen foto (op dit toestel) > link naar een foto > foto van Wikimedia Commons.
+let eigenFotos = {};
+const fotoOpslag = {
+  db: null,
+  open() {
+    if (this.db) return Promise.resolve(this.db);
+    return new Promise((klaar, fout) => {
+      const verzoek = indexedDB.open('vanavond', 1);
+      verzoek.onupgradeneeded = () => verzoek.result.createObjectStore('fotos');
+      verzoek.onsuccess = () => { this.db = verzoek.result; klaar(this.db); };
+      verzoek.onerror = () => fout(verzoek.error);
+    });
+  },
+  async alle() {
+    const db = await this.open();
+    return new Promise((klaar, fout) => {
+      const uit = {}, cursor = db.transaction('fotos').objectStore('fotos').openCursor();
+      cursor.onsuccess = () => { const c = cursor.result; if (c) { uit[c.key] = c.value; c.continue(); } else klaar(uit); };
+      cursor.onerror = () => fout(cursor.error);
+    });
+  },
+  async schrijf(actie) {
+    const db = await this.open();
+    return new Promise((klaar, fout) => {
+      const tx = db.transaction('fotos', 'readwrite');
+      actie(tx.objectStore('fotos'));
+      tx.oncomplete = () => klaar(); tx.onerror = () => fout(tx.error);
+    });
+  },
+  zet(id, data) { return this.schrijf(s => s.put(data, id)); },
+  wis(id) { return this.schrijf(s => s.delete(id)); },
+  leeg() { return this.schrijf(s => s.clear()); }
+};
+function isVeiligeLink(url) { return /^https:\/\/[^\s"'<>]+$/i.test((url || '').trim()); }
+function tekstUitHtml(html) {
+  if (!html) return '';
+  return (new DOMParser().parseFromString(html, 'text/html').body.textContent || '').replace(/\s+/g, ' ').trim();
+}
+function commonsFoto(id) {
+  const info = COMMONS_FOTOS[id]; if (!info) return null;
+  for (const bestand of info.bestanden) {
+    const c = staat.commons[bestand];
+    if (c && c.thumb) return { src: c.thumb, bron: 'commons', link: c.pagina, maker: c.maker, licentie: c.licentie,
+      omschrijving: (info.soort === 'straat' ? 'Omgeving: ' : '') + info.tekst };
+  }
+  return null;
+}
+function fotoVan(z) {
+  if (eigenFotos[z.id]) return { src: eigenFotos[z.id], bron: 'eigen' };
+  const link = invul(z.id).fotoLink;
+  if (isVeiligeLink(link)) return { src: link, bron: 'link', link };
+  return commonsFoto(z.id);
+}
+function fotoBijschrift(f, z) {
+  if (f.bron === 'eigen') return 'Eigen foto';
+  if (f.bron === 'link') return `Foto: website van ${esc(z.naam)} · <a href="${esc(f.link)}" target="_blank" rel="noopener">bron</a>`;
+  return `${esc(f.omschrijving)} · Foto: ${esc(f.maker)}${f.licentie ? ', ' + esc(f.licentie) : ''} · <a href="${esc(f.link)}" target="_blank" rel="noopener">Wikimedia Commons</a>`;
+}
+function initiaalHtml(z, st) {
+  const f = fotoVan(z);
+  return `<span class="initiaal ${statusKlasse(st)}${f ? ' met-foto' : ''}" aria-hidden="true">${esc(initiaal(z.naam))}${f
+    ? `<img src="${esc(f.src)}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.remove('met-foto');this.remove()">` : ''}</span>`;
+}
+async function laadCommons() {
+  const week = 7 * 864e5;
+  const titels = [...new Set(Object.values(COMMONS_FOTOS).flatMap(f => f.bestanden))]
+    .filter(t => !staat.commons[t] || Date.now() - staat.commons[t].opgehaald > week);
+  if (!titels.length) return;
+  const url = 'https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({
+    action: 'query', format: 'json', origin: '*', prop: 'imageinfo', iiprop: 'url|extmetadata',
+    iiurlwidth: '960', iiextmetadatafilter: 'Artist|LicenseShortName', titles: titels.join('|') });
+  try {
+    const antwoord = await fetch(url);
+    if (!antwoord.ok) return;
+    const data = await antwoord.json();
+    const terug = {};
+    ((data.query && data.query.normalized) || []).forEach(n => { terug[n.to] = n.from; });
+    for (const p of Object.values((data.query && data.query.pages) || {})) {
+      const titel = terug[p.title] || p.title;
+      const info = p.imageinfo && p.imageinfo[0];
+      if (!info) { staat.commons[titel] = { opgehaald: Date.now() }; continue; }
+      const meta = info.extmetadata || {};
+      staat.commons[titel] = { thumb: info.thumburl || info.url, pagina: info.descriptionurl,
+        maker: tekstUitHtml(meta.Artist && meta.Artist.value) || 'onbekende maker',
+        licentie: tekstUitHtml(meta.LicenseShortName && meta.LicenseShortName.value), opgehaald: Date.now() };
+    }
+    bewaar(); verversAlles();
+  } catch (e) { /* geen internet: volgende keer opnieuw */ }
+}
+function verkleinFoto(bestand) {
+  return new Promise((klaar, fout) => {
+    const url = URL.createObjectURL(bestand), img = new Image();
+    img.onload = () => {
+      const schaal = Math.min(1, 1000 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * schaal); c.height = Math.round(img.height * schaal);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      klaar(c.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); fout(new Error('foto')); };
+    img.src = url;
+  });
 }
 
 // ================= Tijd en drukte =================
@@ -1003,7 +1139,7 @@ function renderChips() {
 function kaartjeHtml(z, km) {
   const st = huidigeStatus(z.id), i = invul(z.id);
   return `<button class="zkaart" type="button" data-zaak="${z.id}">
-    <span class="initiaal ${statusKlasse(st)}" aria-hidden="true">${esc(initiaal(z.naam))}</span>
+    ${initiaalHtml(z, st)}
     <span class="zk-tekst"><span class="zk-naam">${esc(z.naam)}</span><span class="zk-sub">${esc(i.soort || z.adres)}</span>
     <span class="zk-status ${st ? 't' + st.niveau : ''}">${st ? NIVEAUS[st.niveau] + ' · ' : ''}${loopMinuten(km)} min lopen</span></span></button>`;
 }
@@ -1028,7 +1164,7 @@ function vulBlad() {
 function rijHtml(z, km) {
   const st = huidigeStatus(z.id), i = invul(z.id);
   return `<button class="zrij" type="button" data-zaak="${z.id}">
-    <span class="initiaal ${statusKlasse(st)}" aria-hidden="true">${esc(initiaal(z.naam))}</span>
+    ${initiaalHtml(z, st)}
     <span class="zk-tekst"><span class="zk-naam">${esc(z.naam)}</span><span class="zk-sub">${esc(i.soort ? i.soort + ' · ' + z.adres : z.adres)}</span></span>
     <span class="rechts"><span class="statuspil ${statusKlasse(st)}">${st ? NIVEAUS[st.niveau] : (isIngevuld(z.id) ? 'Ingevuld' : 'Nog leeg')}</span>
     <span class="klein-grijs">${loopMinuten(km)} min lopen</span></span></button>`;
@@ -1091,14 +1227,18 @@ function renderZaak(id) {
   if (!z.zeker) badges.push('<span class="badge let-op">Adres nog controleren</span>');
   if (p.bron === 'schatting') badges.push('<span class="badge let-op">Positie bij benadering</span>');
   const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(6)},${p.lng.toFixed(6)}&travelmode=walking`;
+  const foto = fotoVan(z);
+  const fotoHtml = foto ? `<figure class="zaakfoto"><img src="${esc(foto.src)}" alt="Foto bij ${esc(z.naam)}" decoding="async"
+    onerror="this.closest('figure').remove();var k=document.querySelector('#laag-zaak .zaakkop');if(k)k.classList.remove('met-foto')"><figcaption>${fotoBijschrift(foto, z)}</figcaption></figure>` : '';
   $('#laag-zaak').innerHTML = `<div class="laagbinnen">
     <div class="laagkop">
       <button type="button" class="rondknop klein" data-actie="terug" aria-label="Terug"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
       <span class="titel"></span>
       <button type="button" class="rondknop klein" data-actie="deel-zaak" aria-label="Deel deze zaak"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
     </div>
+    ${fotoHtml}
     <div class="inhoud">
-      <div class="zaakkop ${statusKlasse(st)}">
+      <div class="zaakkop ${statusKlasse(st)}${foto ? ' met-foto' : ''}">
         <span class="watermerk" aria-hidden="true">${esc(initiaal(z.naam))}</span>
         <div class="relatief">
           <span class="oogje">${esc(z.stad)} · ${esc(z.adres)}</span>
@@ -1151,7 +1291,26 @@ function deelZaak(id) {
 }
 
 // ================= Sfeerkaart invullen =================
-function openBewerk(id) { renderBewerk(id); toonLaag('bewerk'); }
+let bewerkFoto = null;   // foto-wijziging die pas bij Bewaar wordt vastgelegd
+function openBewerk(id) { bewerkFoto = null; renderBewerk(id); toonLaag('bewerk'); toonFotoVoorbeeld(id); }
+function voorbeeldFoto(id) {
+  if (bewerkFoto && bewerkFoto.actie === 'eigen') return { src: bewerkFoto.data, tekst: 'Eigen foto, nog niet bewaard', eigen: true };
+  const wis = bewerkFoto && bewerkFoto.actie === 'wis';
+  if (!wis && eigenFotos[id]) return { src: eigenFotos[id], tekst: 'Eigen foto', eigen: true };
+  const link = (($('#v-fotoLink') || {}).value || '').trim();
+  if (isVeiligeLink(link)) return { src: link, tekst: 'Foto via een link', eigen: true };
+  const c = commonsFoto(id);
+  if (c) return { src: c.src, tekst: 'Foto van Wikimedia Commons. Een eigen foto komt hiervoor in de plaats.', eigen: false };
+  return null;
+}
+function toonFotoVoorbeeld(id) {
+  const vak = $('#foto-voorbeeld'); if (!vak) return;
+  const v = voorbeeldFoto(id);
+  vak.style.backgroundImage = v ? `url("${v.src.replace(/"/g, '%22')}")` : '';
+  vak.textContent = v ? '' : 'Geen foto';
+  $('#foto-bron').textContent = v ? v.tekst : 'Nog geen foto.';
+  $('#foto-wis-knop').hidden = !(v && v.eigen);
+}
 function renderBewerk(id) {
   const z = ZAKEN[id], i = invul(id), p = positie(z);
   const tags = i.tags || [], publiek = i.publiek || [];
@@ -1162,6 +1321,17 @@ function renderBewerk(id) {
     </div>
     <form class="inhoud" id="bewerk-form" data-id="${id}" autocomplete="off">
       <div class="schermkop"><span class="oogje">${esc(z.adres)}</span><h1>${esc(z.naam)}</h1><p>Vul in wat je weet. Lege vakjes blijven leeg op de sfeerkaart. Wat je invult, staat alleen op dit toestel.</p></div>
+      <div class="veld"><span class="label">Foto</span>
+        <div class="fotovak">
+          <div class="fotovoorbeeld" id="foto-voorbeeld"></div>
+          <div class="fv-tekst"><span id="foto-bron"></span>
+            <div class="knoppenstapel"><label class="knop" for="v-foto-bestand">Foto maken of kiezen</label><button type="button" class="knop" data-actie="foto-wis" id="foto-wis-knop">Verwijderen</button></div>
+          </div>
+        </div>
+        <input type="file" id="v-foto-bestand" accept="image/*" class="vh">
+      </div>
+      <div class="veld"><label for="v-fotoLink">Of plak de link van een foto</label><input type="text" inputmode="url" id="v-fotoLink" value="${esc(i.fotoLink || '')}" placeholder="https://…"></div>
+      <p class="toelichting">Gebruik alleen je eigen foto's of foto's waarvoor de zaak toestemming gaf, liefst zonder herkenbare gasten.</p>
       <div class="veld"><span class="label" id="lbl-tags">Geschikt voor</span>
         <div class="keuzes" role="group" aria-labelledby="lbl-tags">${SOORTEN_AVOND.map(([k, l]) => `<button type="button" class="keuze" data-wissel="tags" data-waarde="${k}" aria-pressed="${tags.includes(k)}">${l}</button>`).join('')}</div></div>
       <p class="toelichting">Hiermee werken de filters en de avondroute.</p>
@@ -1186,9 +1356,19 @@ function bewaarSfeer() {
   const form = $('#bewerk-form'); if (!form) return;
   const id = form.dataset.id;
   const gekozen = soort => $$(`[data-wissel="${soort}"][aria-pressed="true"]`, form).map(b => b.dataset.waarde);
-  const nieuw = { tags: gekozen('tags'), publiek: gekozen('publiek'), publiekTekst: $('#v-publiekTekst').value.trim() };
+  const link = $('#v-fotoLink').value.trim();
+  if (link && !isVeiligeLink(link)) { toast('Die link werkt niet. Plak een link die begint met https://'); return; }
+  const nieuw = { tags: gekozen('tags'), publiek: gekozen('publiek'), publiekTekst: $('#v-publiekTekst').value.trim(), fotoLink: link };
   for (const v of VELDEN) nieuw[v.k] = $('#v-' + v.k).value.trim();
   staat.invul[id] = nieuw;
+  if (bewerkFoto && bewerkFoto.actie === 'eigen') {
+    eigenFotos[id] = bewerkFoto.data;
+    fotoOpslag.zet(id, bewerkFoto.data).catch(() => toast('De foto staat erop, maar kon niet blijvend worden bewaard op dit toestel.'));
+  } else if (bewerkFoto && bewerkFoto.actie === 'wis') {
+    delete eigenFotos[id];
+    fotoOpslag.wis(id).catch(() => {});
+  }
+  bewerkFoto = null;
   bewaar();
   renderZaak(id);
   sluitLaag();
@@ -1305,7 +1485,7 @@ function renderRouteResultaat() {
     const z = ZAKEN[s.id], i = invul(s.id), st = huidigeStatus(s.id);
     const sub = [i.soort, (i.publiek || []).length ? 'publiek ' + i.publiek.join(', ') : '', i.praten ? 'praten: ' + i.praten : ''].filter(Boolean).join(' · ') || z.adres;
     html += `<button type="button" class="stop" data-zaak="${z.id}"><span class="tl"><b>${klokMin(s.tijd)}</b><i></i></span>
-      <span class="st-body"><span class="initiaal ${statusKlasse(st)}" aria-hidden="true">${esc(initiaal(z.naam))}</span>
+      <span class="st-body">${initiaalHtml(z, st)}
       <span class="st-tekst"><span class="st-etappe">${esc(s.titel)}</span><span class="st-naam">${esc(z.naam)}</span><span class="st-sub">${esc(sub)}</span>
       ${st ? `<span class="zk-status t${st.niveau}">${esc(statusTekst(st))}</span>` : ''}</span></span></button>`;
     if (n < stops.length - 1) {
@@ -1431,7 +1611,7 @@ function zetDemo(aan) {
   pasThemaToe(); verversAlles();
 }
 function exporteer() {
-  const data = { app: 'Vanavond demo', versie: 1, gemaakt: new Date().toISOString(), invul: staat.invul, posities: staat.posities, klopt: staat.klopt };
+  const data = { app: 'Vanavond demo', versie: 1, gemaakt: new Date().toISOString(), invul: staat.invul, posities: staat.posities, klopt: staat.klopt, fotos: eigenFotos };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'vanavond-gegevens.json';
@@ -1449,6 +1629,9 @@ function importeer(bestand) {
       Object.assign(staat.invul, bekend(d.invul));
       Object.assign(staat.posities, bekend(d.posities));
       Object.assign(staat.klopt, bekend(d.klopt));
+      for (const [zid, foto] of Object.entries(bekend(d.fotos))) {
+        if (typeof foto === 'string' && foto.startsWith('data:image/')) { eigenFotos[zid] = foto; fotoOpslag.zet(zid, foto).catch(() => {}); }
+      }
       bewaar(); tekenMarkers(); verversAlles(); openMenu();
       toast('Gegevens ingeladen');
     } catch (e) {
@@ -1468,6 +1651,7 @@ function wisAlles() {
   clearTimeout(wisBevestiging); wisBevestiging = null;
   const stad = staat.stad, thema = staat.thema;
   staat = standaardStaat(); staat.stad = stad; staat.thema = thema; staat.welkomGezien = true;
+  eigenFotos = {}; fotoOpslag.leeg().catch(() => {});
   bewaar(); tekenMarkers(); pasThemaToe(true); verversAlles(); openMenu();
   toast('Alles gewist');
 }
@@ -1494,6 +1678,7 @@ document.addEventListener('click', e => {
     case 'bewerk': openBewerk(id); break;
     case 'bewaar-sfeer': bewaarSfeer(); break;
     case 'positie': startSleep($('#bewerk-form').dataset.id); break;
+    case 'foto-wis': bewerkFoto = { actie: 'wis' }; $('#v-fotoLink').value = ''; toonFotoVoorbeeld($('#bewerk-form').dataset.id); break;
     case 'meld-als-zaak': staat.meldZaak = id; bewaar(); sluitAlleLagen(); wisselTab('melden'); break;
     case 'in-route': {
       const opties = Object.assign(standaardOpties(), staat.route ? staat.route.opties : {}, { stad: ZAKEN[id].stad });
@@ -1514,6 +1699,17 @@ document.addEventListener('click', e => {
     case 'los-vast': if (staat.route) { staat.route.vast = null; bewaar(); genereerRoute(false); } break;
   }
 });
+document.addEventListener('change', async e => {
+  if (e.target.id !== 'v-foto-bestand') return;
+  const bestand = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!bestand || !$('#bewerk-form')) return;
+  try {
+    bewerkFoto = { actie: 'eigen', data: await verkleinFoto(bestand) };
+    toonFotoVoorbeeld($('#bewerk-form').dataset.id);
+  } catch (fout) { toast('Deze foto kan ik niet openen. Probeer een andere.'); }
+});
+document.addEventListener('input', e => { if (e.target.id === 'v-fotoLink' && $('#bewerk-form')) toonFotoVoorbeeld($('#bewerk-form').dataset.id); });
 $('#naar-zoeken').addEventListener('click', () => { wisselTab('lijst'); setTimeout(() => $('#zoek-invoer').focus(), 60); });
 $('#zoek-invoer').addEventListener('input', e => { staat.zoek = e.target.value; renderLijst(); });
 $('#menu-knop').addEventListener('click', openMenu);
@@ -1552,6 +1748,8 @@ function start() {
   verversAlles();
   if (!staat.welkomGezien) $('#welkom').hidden = false;
   zoekAllePosities();
+  laadCommons();
+  fotoOpslag.alle().then(fotos => { eigenFotos = fotos; if (Object.keys(fotos).length) verversAlles(); }).catch(() => {});
   setInterval(() => { pasThemaToe(); if (!staat.demo.aan) verversAlles(); }, 30000);
 }
 start();
