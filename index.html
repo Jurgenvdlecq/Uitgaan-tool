@@ -95,7 +95,8 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 /* ---------- Kaart ---------- */
 #kaart { position: absolute; inset: 0; background: var(--vlak2); }
 .leaflet-container { font-family: var(--f-tekst); background: var(--vlak2); }
-:root:not(.nacht) .leaflet-tile-pane { filter: sepia(0.2) saturate(0.88) brightness(1.02); }
+:root:not(.nacht) .leaflet-tile-pane { filter: sepia(0.16) saturate(0.9) brightness(1.02); }
+:root.nacht .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.88) contrast(0.92) saturate(0.45); }
 .leaflet-bottom { bottom: calc(var(--blad) + 6px); }
 .leaflet-control-attribution { background: var(--glas) !important; color: var(--stil) !important; font-size: 10px; border-radius: 8px 0 0 8px; padding: 1px 6px !important; }
 .leaflet-control-attribution a { color: var(--inkt2) !important; }
@@ -547,7 +548,7 @@ details.wensen[open] summary svg { transform: rotate(180deg); }
       </div>
       <div class="menugroep">
         <h3>Over deze demo</h3>
-        <p>De zaken en adressen zijn echt. Sfeer, publiek en drukte zijn alleen te zien als iemand ze heeft ingevuld of gemeld. Kaart © OpenStreetMap-bijdragers en CARTO. Posities komen uit de adresgegevens van PDOK.</p>
+        <p>De zaken en adressen zijn echt. Sfeer, publiek en drukte zijn alleen te zien als iemand ze heeft ingevuld of gemeld. Kaart © Kadaster / PDOK, met OpenStreetMap als reserve. Posities komen uit de adresgegevens van PDOK.</p>
         <button type="button" class="knop hoofd" id="menu-sluit">Sluiten</button>
       </div>
     </div>
@@ -788,25 +789,41 @@ function pasThemaToe(forceer) {
 let kaart = null, tegels = null, routeKaart = null, routeTegels = null, routeLaag = null;
 let markers = {}, ikMarker = null, ikPos = null, geselecteerd = null, sleepId = null, gebruikerBewoog = false;
 
-function tegelUrl() {
-  return isNacht()
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// Kaartbeelden: eerst de Nederlandse basiskaart van het Kadaster (PDOK, gratis en zonder sleutel).
+// Laadt die niet, dan schakelt de app vanzelf over op OpenStreetMap. 's Nachts wordt de lichte kaart donker gemaakt.
+const KAARTBRONNEN = {
+  pdok: {
+    dag: 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/pastel/EPSG:3857/{z}/{x}/{y}.png',
+    nacht: 'https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png',
+    opties: { maxZoom: 19, maxNativeZoom: 19, attribution: 'Kaart © <a href="https://www.pdok.nl/introductie/-/article/basisregistratie-topografie-achtergrondkaarten-brt-a-" target="_blank" rel="noopener">Kadaster / PDOK</a>' }
+  },
+  osm: {
+    dag: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    nacht: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    opties: { maxZoom: 19, maxNativeZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-bijdragers' }
+  }
+};
+let kaartbron = 'pdok', tegelFouten = 0, tegelGeladen = 0;
+function tegelUrl() { return KAARTBRONNEN[kaartbron][isNacht() ? 'nacht' : 'dag']; }
+function nieuweTegels() {
+  const laag = L.tileLayer(tegelUrl(), KAARTBRONNEN[kaartbron].opties);
+  laag.on('tileload', () => { tegelGeladen++; });
+  laag.on('tileerror', () => {
+    tegelFouten++;
+    if (kaartbron === 'pdok' && tegelGeladen === 0 && tegelFouten >= 4) { kaartbron = 'osm'; tegelFouten = 0; zetTegels(); }
+    else if (kaartbron === 'osm' && tegelGeladen === 0 && tegelFouten === 6) toast('De kaartbeelden laden niet. Is er internet?');
+  });
+  return laag;
 }
-const TEGEL_OPTIES = { maxZoom: 19, subdomains: 'abcd',
-  attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>' };
-let tegelFouten = 0;
 function zetTegels() {
   if (!window.L) return;
   if (kaart) {
     if (tegels) kaart.removeLayer(tegels);
-    tegels = L.tileLayer(tegelUrl(), TEGEL_OPTIES);
-    tegels.on('tileerror', () => { tegelFouten++; if (tegelFouten === 6) toast('De kaartbeelden laden niet. Is er internet?'); });
-    tegels.addTo(kaart);
+    tegels = nieuweTegels().addTo(kaart);
   }
   if (routeKaart) {
     if (routeTegels) routeKaart.removeLayer(routeTegels);
-    routeTegels = L.tileLayer(tegelUrl(), TEGEL_OPTIES).addTo(routeKaart);
+    routeTegels = nieuweTegels().addTo(routeKaart);
   }
 }
 function maakKaart() {
